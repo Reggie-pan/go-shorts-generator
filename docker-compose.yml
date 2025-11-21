@@ -1,0 +1,16 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - STORAGE_PATH=/data
+      - BGM_PATH=/assets/bgm
+      - GOOGLE_TTS_KEY=
+      - AZURE_TTS_KEY=BQKuPmv3gGa9MBApu81i46EZkEFHiSqUuu2Csym7NRabd6YhmYmRJQQJ99BHACi0881XJ3w3AAAYACOGg4Fk
+      - AZURE_TTS_REGION=japaneast
+    volumes:
+      - ./data:/data
+      - ./assets:/assets

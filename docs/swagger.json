@@ -1,0 +1,130 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Video Smith API",
+    "version": "1.0.0",
+    "description": "短影片自動生成任務 API"
+  },
+  "paths": {
+    "/api/v1/jobs": {
+      "post": {
+        "summary": "新增任務",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/JobCreateRequest" }
+            }
+          }
+        },
+        "responses": { "201": { "description": "建立成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "id": { "type": "string" } } } } } } }
+      },
+      "get": {
+        "summary": "取得任務列表",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "列表", "content": { "application/json": {} } } }
+      }
+    },
+    "/api/v1/jobs/{id}": {
+      "get": {
+        "summary": "查詢任務狀態",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "狀態", "content": { "application/json": {} } } }
+      },
+      "delete": {
+        "summary": "刪除任務",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "已刪除" } }
+      }
+    },
+    "/api/v1/jobs/{id}/result": {
+      "get": {
+        "summary": "下載影片",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "MP4", "content": { "video/mp4": { } } } }
+      }
+    },
+    "/api/v1/jobs/{id}/cancel": {
+      "post": {
+        "summary": "終止任務",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "已取消" } }
+      }
+    },
+    "/api/v1/presets/bgm": {
+      "get": {
+        "summary": "列出預設 BGM",
+        "responses": { "200": { "description": "清單", "content": { "application/json": {} } } }
+      }
+    },
+    "/api/v1/swagger.json": {
+      "get": {
+        "summary": "Swagger 文件（本檔）",
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "JobCreateRequest": {
+        "type": "object",
+        "properties": {
+          "script": { "type": "string" },
+          "materials": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string", "enum": ["image", "video"] },
+                "source": { "type": "string", "enum": ["upload", "url"] },
+                "path_or_url": { "type": "string" },
+                "duration_sec": { "type": "number" }
+              },
+              "required": ["type", "source", "path_or_url", "duration_sec"]
+            }
+          },
+          "tts": {
+            "type": "object",
+            "properties": {
+              "provider": { "type": "string", "enum": ["google", "azure_v1", "azure_v2", "free"] },
+              "voice": { "type": "string" },
+              "locale": { "type": "string" },
+              "speed": { "type": "number" },
+              "pitch": { "type": "number" }
+            }
+          },
+          "video": {
+            "type": "object",
+            "properties": {
+              "resolution": { "type": "string" },
+              "fps": { "type": "integer" },
+              "speed": { "type": "number" }
+            }
+          },
+          "bgm": {
+            "type": "object",
+            "properties": {
+              "source": { "type": "string", "enum": ["upload", "url", "preset"] },
+              "path_or_url_or_name": { "type": "string" },
+              "volume": { "type": "number" }
+            }
+          },
+          "subtitle_style": {
+            "type": "object",
+            "properties": {
+              "font": { "type": "string" },
+              "size": { "type": "integer" },
+              "color": { "type": "string" },
+              "y_offset": { "type": "integer" },
+              "max_line_width": { "type": "integer" }
+            }
+          }
+        },
+        "required": ["script", "materials", "tts", "video"]
+      }
+    }
+  }
+}
