@@ -24,6 +24,7 @@ ENV BGM_PATH=/assets/bgm
 WORKDIR /app
 COPY --from=backend-builder /app/server /app/server
 COPY --from=frontend-builder /app/frontend/dist /app/public
+COPY frontend/swagger.html /app/public/swagger.html
 COPY docs /app/docs
 COPY assets /assets
 VOLUME ["/data"]

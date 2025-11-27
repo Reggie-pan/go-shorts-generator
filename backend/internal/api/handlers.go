@@ -157,13 +157,29 @@ func (h *Handlers) ListBGM(w http.ResponseWriter, r *http.Request) {
 
 // Swagger 傳回 OpenAPI JSON。
 func (h *Handlers) Swagger(w http.ResponseWriter, r *http.Request) {
-	specPath := filepath.Join("docs", "swagger.json")
-	f, err := os.Open(specPath)
-	if err != nil {
+	// 嘗試多個可能的路徑
+	possiblePaths := []string{
+		filepath.Join("docs", "swagger.json"),
+		filepath.Join("/app", "docs", "swagger.json"),
+		filepath.Join("/app/docs", "swagger.json"),
+	}
+
+	var f *os.File
+	var err error
+	for _, path := range possiblePaths {
+		f, err = os.Open(path)
+		if err == nil {
+			break
+		}
+	}
+
+	if f == nil {
+		log.Error().Err(err).Msg("無法找到 swagger.json 檔案")
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "swagger 檔案不存在"})
 		return
 	}
 	defer f.Close()
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	_, _ = io.Copy(w, f)
 }

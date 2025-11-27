@@ -59,49 +59,53 @@ export default function App() {
 
   return (
     <div className="container">
-      <h1>Video Smith</h1>
-      <div style={{ marginBottom: 12 }}>
-        <a href="/api/v1/swagger.json" style={{ color: '#93c5fd' }} target="_blank" rel="noreferrer">查看 Swagger JSON</a>
+      <h1><i className="fas fa-video"></i> Video Smith</h1>
+      <div style={{ marginBottom: 24 }}>
+        <a href="/swagger.html" target="_blank" rel="noreferrer" className="api-docs-link">
+          <i className="fas fa-file-code"></i> 查看 API 文件
+        </a>
       </div>
 
       <div className="card">
-        <h2>建立任務</h2>
-        <label>腳本</label>
+        <h2><i className="fas fa-plus-circle"></i> 建立任務</h2>
+        <label><i className="fas fa-scroll"></i> 腳本</label>
         <textarea rows="4" value={form.script} onChange={(e) => setForm({ ...form, script: e.target.value })} />
 
-        <h3>素材設定</h3>
+        <h3><i className="fas fa-images"></i> 素材設定</h3>
         {form.materials.map((m, idx) => (
           <div key={idx} className="material-block">
             <div className="grid">
               <div>
-                <label>類型</label>
+                <label><i className="fas fa-layer-group"></i> 類型</label>
                 <select value={m.type} onChange={(e) => updateMaterial(idx, 'type', e.target.value)}>
                   <option value="image">image</option>
                   <option value="video">video</option>
                 </select>
               </div>
               <div>
-                <label>來源</label>
+                <label><i className="fas fa-link"></i> 來源</label>
                 <select value={m.source} onChange={(e) => updateMaterial(idx, 'source', e.target.value)}>
                   <option value="url">url</option>
                   <option value="upload">upload(路徑)</option>
                 </select>
               </div>
               <div>
-                <label>秒數</label>
+                <label><i className="fas fa-clock"></i> 秒數</label>
                 <input type="number" value={m.duration_sec} onChange={(e) => updateMaterial(idx, 'duration_sec', Number(e.target.value))} />
               </div>
             </div>
-            <label>網址或路徑</label>
-            <input value={m.path_or_url} onChange={(e) => updateMaterial(idx, 'path_or_url', e.target.value)} />
-            <div style={{ textAlign: 'right' }}>
-              {form.materials.length > 1 && <button style={{ background: '#ef4444', color: '#fff' }} onClick={() => removeMaterial(idx)}>移除</button>}
+            <div className="material-block-path">
+              <label><i className="fas fa-globe"></i> 網址或路徑</label>
+              <input value={m.path_or_url} onChange={(e) => updateMaterial(idx, 'path_or_url', e.target.value)} />
+            </div>
+            <div className="material-block-actions">
+              {form.materials.length > 1 && <button className="btn-danger" onClick={() => removeMaterial(idx)}><i className="fas fa-trash"></i> 移除</button>}
             </div>
           </div>
         ))}
-        <button onClick={addMaterial} style={{ background: '#0ea5e9', color: '#083344' }}>新增素材</button>
+        <button className="btn-primary" onClick={addMaterial}><i className="fas fa-plus"></i> 新增素材</button>
 
-        <h3>TTS</h3>
+        <h3><i className="fas fa-microphone"></i> 語音合成 (TTS)</h3>
         <div className="grid">
           <div>
             <label>Provider</label>
@@ -130,7 +134,7 @@ export default function App() {
           </div>
         </div>
 
-        <h3>影片</h3>
+        <h3><i className="fas fa-film"></i> 影片設定</h3>
         <div className="grid">
           <div>
             <label>解析度</label>
@@ -147,7 +151,7 @@ export default function App() {
           </div>
         </div>
 
-        <h3>背景音樂</h3>
+        <h3><i className="fas fa-music"></i> 背景音樂</h3>
         <div className="grid">
           <div>
             <label>來源</label>
@@ -173,7 +177,7 @@ export default function App() {
           <input value={form.bgm.path_or_url_or_name} onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, path_or_url_or_name: e.target.value } })} />
         )}
 
-        <h3>字幕樣式</h3>
+        <h3><i className="fas fa-closed-captioning"></i> 字幕樣式</h3>
         <div className="grid">
           <div>
             <label>字體</label>
@@ -188,22 +192,36 @@ export default function App() {
             <input type="number" value={form.subtitle_style.y_offset} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, y_offset: Number(e.target.value) } })} />
           </div>
           <div>
-            <label>顏色</label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input 
-                type="color" 
-                value={`#${form.subtitle_style.color || 'FFFFFF'}`} 
-                onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
-                style={{ width: 60, height: 32 }}
-              />
-              <input 
-                type="text" 
-                value={form.subtitle_style.color || 'FFFFFF'} 
-                onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
-                placeholder="FFFFFF"
-                maxLength="6"
-                style={{ width: 100 }}
-              />
+            <label><i className="fas fa-palette"></i> 顏色</label>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: '6px' }}>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="color" 
+                  value={`#${form.subtitle_style.color || 'FFFFFF'}`} 
+                  onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
+                  style={{ 
+                    width: 50, 
+                    height: 50, 
+                    border: '2px solid var(--border-primary)',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-base)'
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>#</span>
+                  <input 
+                    type="text" 
+                    value={form.subtitle_style.color || 'FFFFFF'} 
+                    onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
+                    placeholder="FFFFFF"
+                    maxLength="6"
+                    style={{ flex: 1, textTransform: 'uppercase', fontFamily: 'monospace', letterSpacing: '0.05em' }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <div>
@@ -211,26 +229,30 @@ export default function App() {
             <input type="number" value={form.subtitle_style.max_line_width} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, max_line_width: Number(e.target.value) } })} />
           </div>
         </div>
-        <div style={{ marginTop: 8, padding: 12, border: '1px solid #1f2937', borderRadius: 8, background: '#0b1223' }}>
-          <div style={{ marginBottom: 6, color: '#cbd5f5' }}>字幕預覽</div>
+        <div className="preview-box">
+          <div className="preview-label">
+            <i className="fas fa-eye"></i> 字幕預覽
+          </div>
           <div
             style={{
               fontFamily: form.subtitle_style.font || 'Noto Sans TC',
               fontSize: `${form.subtitle_style.size || 36}px`,
-              color: `#${form.subtitle_style.color || 'FFFFFF'}`
+              color: `#${form.subtitle_style.color || 'FFFFFF'}`,
+              textAlign: 'center',
+              padding: '20px'
             }}
           >
             {form.script ? form.script.slice(0, 12) : '預覽文字'}
           </div>
         </div>
 
-        <div style={{ marginTop: 12 }}>
-          <button onClick={submit}>送出</button>
+        <div style={{ marginTop: 24 }}>
+          <button onClick={submit}><i className="fas fa-paper-plane"></i> 建立任務</button>
         </div>
       </div>
 
       <div className="card">
-        <h2>任務列表</h2>
+        <h2><i className="fas fa-list-check"></i> 任務列表</h2>
         <table>
           <thead>
             <tr>
@@ -241,18 +263,52 @@ export default function App() {
             </tr>
           </thead>
           <tbody>
-            {jobs.map((j) => (
-              <tr key={j.id}>
-                <td>{j.id}</td>
-                <td>{j.status}</td>
-                <td>{j.progress}%</td>
-                <td>
-                  {!finished(j.status) && <button onClick={() => cancel(j.id)}>取消</button>}
-                  <button onClick={() => remove(j.id)} style={{ marginLeft: 8, background: '#ef4444', color: '#fff' }}>刪除</button>
-                  {j.status === 'success' && <a href={`/api/v1/jobs/${j.id}/result`} style={{ marginLeft: 8, color: '#93c5fd' }}>下載</a>}
+            {jobs.length === 0 ? (
+              <tr>
+                <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  <i className="fas fa-inbox" style={{ fontSize: '3rem', marginBottom: '16px', display: 'block', opacity: 0.3 }}></i>
+                  <div style={{ fontSize: '1.125rem' }}>目前沒有任務</div>
+                  <div style={{ fontSize: '0.875rem', marginTop: '8px' }}>建立新任務後將顯示在這裡</div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              jobs.map((j) => (
+                <tr key={j.id}>
+                  <td className="id-cell">{j.id}</td>
+                  <td>
+                    <span className={`status-badge status-${j.status}`}>
+                      {j.status === 'pending' && <i className="fas fa-clock"></i>}
+                      {j.status === 'running' && <i className="fas fa-spinner fa-spin"></i>}
+                      {j.status === 'success' && <i className="fas fa-check-circle"></i>}
+                      {j.status === 'failed' && <i className="fas fa-times-circle"></i>}
+                      {j.status === 'canceled' && <i className="fas fa-ban"></i>}
+                      {' '}{j.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ flex: 1, height: '8px', background: 'var(--bg-input)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          width: `${j.progress}%`, 
+                          height: '100%', 
+                          background: j.status === 'success' ? 'linear-gradient(90deg, var(--color-secondary), #059669)' : 
+                                     j.status === 'failed' ? 'linear-gradient(90deg, var(--color-danger), #dc2626)' :
+                                     'linear-gradient(90deg, var(--color-primary), var(--color-primary-light))',
+                          transition: 'width 0.3s ease',
+                          borderRadius: '4px'
+                        }}></div>
+                      </div>
+                      <span style={{ minWidth: '45px', fontSize: '0.875rem', fontWeight: 600 }}>{j.progress}%</span>
+                    </div>
+                  </td>
+                  <td className="actions-row">
+                    {!finished(j.status) && <button className="btn-secondary" onClick={() => cancel(j.id)}><i className="fas fa-stop"></i> 取消</button>}
+                    <button className="btn-danger" onClick={() => remove(j.id)}><i className="fas fa-trash"></i> 刪除</button>
+                    {j.status === 'success' && <a href={`/api/v1/jobs/${j.id}/result`} className="download-link"><i className="fas fa-download"></i> 下載</a>}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
