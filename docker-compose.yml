@@ -1,4 +1,4 @@
-version: "3.9"
+
 services:
   app:
     build: .
@@ -8,9 +8,12 @@ services:
       - PORT=8080
       - STORAGE_PATH=/data
       - BGM_PATH=/assets/bgm
+      - TZ=Asia/Taipei
       - GOOGLE_TTS_KEY=
       - AZURE_TTS_KEY=BQKuPmv3gGa9MBApu81i46EZkEFHiSqUuu2Csym7NRabd6YhmYmRJQQJ99BHACi0881XJ3w3AAAYACOGg4Fk
       - AZURE_TTS_REGION=japaneast
+      - GEMINI_API_KEY=AIzaSyBLVq1nHqPf1ts5TCgllHMDbv4Qg78tjmo
+      - AI_MODEL=gemini-2.0-flash
     volumes:
       - ./data:/data
       - ./assets:/assets

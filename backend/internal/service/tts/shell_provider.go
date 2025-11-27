@@ -7,7 +7,7 @@ type ShellProvider struct {
 	Region string
 }
 
-func (s *ShellProvider) Synthesize(text, voice, locale string, speed, pitch float64) (string, int, error) {
+func (s *ShellProvider) Synthesize(text, voice, locale string, speed, pitch float64) (string, float64, error) {
 	if s.Engine == "google" && s.Key == "" {
 		return (&EspeakProvider{}).Synthesize(text, voice, locale, speed, pitch)
 	}

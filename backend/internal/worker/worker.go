@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"video-smith/backend/internal/ai"
 	"video-smith/backend/internal/config"
 	"video-smith/backend/internal/service/job"
 	"video-smith/backend/internal/service/media"
@@ -18,13 +19,14 @@ import (
 )
 
 type Worker struct {
-	cfg   *config.Config
-	store *storage.Store
-	queue *Queue
+	cfg      *config.Config
+	store    *storage.Store
+	queue    *Queue
+	aiClient *ai.Client
 }
 
-func NewWorker(cfg *config.Config, store *storage.Store, q *Queue) *Worker {
-	return &Worker{cfg: cfg, store: store, queue: q}
+func NewWorker(cfg *config.Config, store *storage.Store, q *Queue, aiClient *ai.Client) *Worker {
+	return &Worker{cfg: cfg, store: store, queue: q, aiClient: aiClient}
 }
 
 func (w *Worker) Run() {
@@ -72,7 +74,19 @@ func (w *Worker) process(rec *job.Record) error {
 	rec.Progress = 15
 	_ = w.store.UpdateJob(rec)
 
-	lines := utils.SplitScript(rec.Request.Script, rec.Request.SubtitleStyle.MaxLineWidth)
+	log.Info().Str("job", rec.ID).Msg("AI 斷句中...")
+	var lines []string
+	if w.aiClient != nil {
+		lines, err = w.aiClient.SegmentText(rec.Request.Script, rec.Request.SubtitleStyle.MaxLineWidth)
+	}
+	if w.aiClient == nil || err != nil {
+		if err != nil {
+			log.Error().Err(err).Msg("AI 斷句失敗，降級使用規則斷句")
+		} else {
+			log.Info().Msg("無 AI 客戶端，使用規則斷句")
+		}
+		lines = utils.SplitScript(rec.Request.Script, rec.Request.SubtitleStyle.MaxLineWidth)
+	}
 	for i, line := range lines {
 		lines[i] = utils.AutoSpacing(line)
 	}
@@ -80,18 +94,50 @@ func (w *Worker) process(rec *job.Record) error {
 	if err != nil {
 		return err
 	}
+
+	// 產生標準靜音檔 (0.2s, PCM 24k, Mono)
+	silencePath := filepath.Join(base, "silence.wav")
+	if _, err := utils.RunCmd("ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", "0.2", "-c:a", "pcm_s16le", silencePath); err != nil {
+		return fmt.Errorf("建立靜音檔失敗: %w", err)
+	}
+	silenceDur, _ := utils.AudioDurationSeconds(silencePath)
+
 	var audioParts []string
-	var durations []int
+	var durations []float64
 	log.Info().Str("job", rec.ID).Int("lines", len(lines)).Msg("開始 TTS 合成")
-	for _, line := range lines {
-		path, dur, err := provider.Synthesize(line, rec.Request.TTS.Voice, rec.Request.TTS.Locale, rec.Request.TTS.Speed, rec.Request.TTS.Pitch)
+	for i, line := range lines {
+		// 1. 文本清理 (Sanitization)
+		ttsText := strings.ReplaceAll(line, "\n", ", ")
+		ttsText = strings.ReplaceAll(ttsText, "\\", "")
+		ttsText = strings.ReplaceAll(ttsText, "/", "")
+		ttsText = strings.ReplaceAll(ttsText, "*", "")
+
+		path, _, err := provider.Synthesize(ttsText, rec.Request.TTS.Voice, rec.Request.TTS.Locale, rec.Request.TTS.Speed, rec.Request.TTS.Pitch)
 		if err != nil {
 			return err
 		}
-		audioParts = append(audioParts, path)
-		durations = append(durations, dur)
-	}
 
+		// 2. 強制重編碼與修剪 (Re-encode & Trim)
+		// 強制轉為 pcm_s16le 24000Hz mono，確保與靜音檔一致，避免 concat 問題
+		trimmedPath := strings.TrimSuffix(path, filepath.Ext(path)) + fmt.Sprintf("_%d_processed.wav", i)
+		filter := "silenceremove=start_periods=1:start_duration=0:start_threshold=-50dB:detection=peak,areverse,silenceremove=start_periods=1:start_duration=0:start_threshold=-50dB:detection=peak,areverse"
+
+		if _, err := utils.RunCmd("ffmpeg", "-y", "-i", path, "-af", filter, "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", trimmedPath); err != nil {
+			log.Warn().Err(err).Msg("音訊處理失敗，使用原始檔案")
+			trimmedPath = path
+		}
+
+		dur, _ := utils.AudioDurationSeconds(trimmedPath)
+
+		// 3. 記錄片段與長度
+		// 每一句後面都接一個靜音檔
+		audioParts = append(audioParts, trimmedPath)
+		audioParts = append(audioParts, silencePath)
+
+		// 字幕長度 = 語音長度 + 靜音長度
+		// 這樣字幕會顯示直到下一句開始
+		durations = append(durations, dur+silenceDur)
+	}
 	rec.Progress = 35
 	_ = w.store.UpdateJob(rec)
 
@@ -101,31 +147,50 @@ func (w *Worker) process(rec *job.Record) error {
 		list = append(list, fmt.Sprintf("file '%s'", p))
 	}
 	_ = os.WriteFile(concatTxt, []byte(strings.Join(list, "\n")), 0o644)
-	voiceOut := filepath.Join(base, "voice.wav")
-	if _, err := utils.RunCmd("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatTxt, "-c", "copy", voiceOut); err != nil {
-		return fmt.Errorf("合併語音失敗: %v", err)
-	}
-	totalVoiceDur, _ := utils.AudioDurationMS(voiceOut)
-	log.Info().Str("job", rec.ID).Int("duration_ms", totalVoiceDur).Msg("語音合併完成")
 
-	subs := utils.BuildTimeline(lines, durations)
+	voiceOut := filepath.Join(base, "voice.wav")
+	// 合併時同樣強制重編碼，確保萬無一失
+	if out, err := utils.RunCmd("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatTxt, "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", voiceOut); err != nil {
+		return fmt.Errorf("合併語音失敗: %v / %s", err, out)
+	}
+
+	totalVoiceDur, _ := utils.AudioDurationSeconds(voiceOut)
+	log.Info().Str("job", rec.ID).Float64("duration_sec", totalVoiceDur).Msg("語音合併完成")
+
+	var sumDur float64
+	for _, d := range durations {
+		sumDur += d
+	}
+	log.Info().Str("job", rec.ID).Float64("sum_durations", sumDur).Float64("total_voice_dur", totalVoiceDur).Msg("時間軸校對")
+
+	scaleFactor := 1.0
+	if sumDur > 0 && totalVoiceDur > 0 {
+		scaleFactor = totalVoiceDur / sumDur
+	}
+	log.Info().Str("job", rec.ID).Float64("scale_factor", scaleFactor).Msg("時間軸縮放")
+
+	subs := utils.BuildTimelineFloat(lines, durations)
 	subLines := []media.SubtitleLine{}
 	for _, s := range subs {
+		start := int(float64(s.Start) * scaleFactor)
+		end := int(float64(s.End) * scaleFactor)
 		subLines = append(subLines, media.SubtitleLine{
 			Text:  s.Text,
-			Start: s.Start,
-			End:   s.End,
+			Start: start,
+			End:   end,
 		})
 	}
-	subPath, err := media.BuildASS(base, rec.Request.SubtitleStyle, subLines)
+	subPath, _, err := media.BuildASS(base, rec.Request.SubtitleStyle, subLines, rec.Request.Video.Resolution)
 	if err != nil {
 		return err
 	}
+	subPath, _ = filepath.Abs(subPath)
 
 	rec.Progress = 55
 	_ = w.store.UpdateJob(rec)
 
-	videoSegments := media.BuildVideoTimeline(materials, rec.Request.Materials, totalVoiceDur)
+	videoSegments := media.BuildVideoTimeline(materials, rec.Request.Materials, int(totalVoiceDur*1000))
+	log.Debug().Str("job", rec.ID).Str("resolution", rec.Request.Video.Resolution).Msg("製作影片片段")
 	videoPath, err := media.MakeSegments(base, rec.Request.Video.Resolution, rec.Request.Video.FPS, videoSegments)
 	if err != nil {
 		return err
@@ -147,7 +212,6 @@ func (w *Worker) process(rec *job.Record) error {
 	} else if rec.Request.BGM.Source == "upload" {
 		bgmInput = rec.Request.BGM.PathOrName
 	}
-
 	if bgmInput != "" {
 		if _, err := os.Stat(bgmInput); err != nil {
 			alt := utils.PickFirstAudio(w.cfg.BgmPath)
@@ -162,22 +226,34 @@ func (w *Worker) process(rec *job.Record) error {
 	}
 
 	output := filepath.Join(base, "output.mp4")
-	speed := rec.Request.Video.Speed
-	if speed <= 0 {
-		speed = 1.0
-	}
+
 	subPathFF := filepath.ToSlash(subPath)
 	subPathFF = strings.ReplaceAll(subPathFF, "'", "\\'")
-	videoFilter := fmt.Sprintf("subtitles='%s',setpts=%f*PTS", subPathFF, 1.0/speed)
+
+	// 移除 setpts=PTS/%f，保持原始速度
+	videoFilter := fmt.Sprintf("subtitles='%s'", subPathFF)
+
 	var args []string
+	log.Info().Str("job", rec.ID).Msg("開始 ffmpeg 合成")
+	log.Info().Interface("subtitle_style", rec.Request.SubtitleStyle).Msg("Worker 使用的字幕樣式")
+	log.Info().Str("video_filter", videoFilter).Msg("生成的 Video Filter")
+
+	voiceSeconds := totalVoiceDur
+
 	if bgmInput != "" {
-		filter := fmt.Sprintf("[1:a]volume=%.2f,apad[b];[2:a]apad[v];[b][v]amix=inputs=2:duration=longest[aout]", rec.Request.BGM.Volume)
-		args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut, "-filter_complex", filter, "-map", "0:v", "-map", "[aout]", "-c:v", "libx264", "-c:a", "aac", "-shortest", "-vf", videoFilter, output}
+		filter := fmt.Sprintf("[0:v]%s[vout];[1:a]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f[b];[2:a]atrim=0:%.3f[v];[b][v]amix=inputs=2:duration=shortest[aout]",
+			videoFilter, rec.Request.BGM.Volume, voiceSeconds, voiceSeconds)
+		args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-c:a", "aac", "-shortest", output}
 	} else {
-		args = []string{"-y", "-i", videoPath, "-i", voiceOut, "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-c:a", "aac", "-shortest", "-vf", videoFilter, output}
+		filter := fmt.Sprintf("[0:v]%s[vout];[1:a]atrim=0:%.3f[aout]", videoFilter, voiceSeconds)
+		args = []string{"-y", "-i", videoPath, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-c:a", "aac", "-shortest", output}
 	}
-	if _, err := utils.RunCmd("ffmpeg", args...); err != nil {
-		return fmt.Errorf("合成最終影片失敗: %v", err)
+	if out, err := utils.RunCmdTimeout(5*time.Minute, "ffmpeg", args...); err != nil {
+		return fmt.Errorf("合成最終影片失敗 %v / %s", err, out)
+	} else if out != "" {
+		log.Debug().Str("job", rec.ID).Msg(out)
 	}
+	rec.Progress = 95
+	_ = w.store.UpdateJob(rec)
 	return nil
 }

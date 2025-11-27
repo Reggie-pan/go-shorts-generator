@@ -39,7 +39,7 @@ func TestProcessPipeline(t *testing.T) {
 		t.Fatal(err)
 	}
 	q := NewQueue(1)
-	w := NewWorker(cfg, store, q)
+	w := NewWorker(cfg, store, q, nil)
 
 	req := job.JobCreateRequest{
 		Script: "這是一段測試腳本。第二句台詞。",
@@ -48,7 +48,7 @@ func TestProcessPipeline(t *testing.T) {
 			{Type: "image", Source: "upload", PathOrURL: img2, DurationSec: 2},
 		},
 		TTS:           job.TTSSetting{Provider: "free", Locale: "en", Speed: 1.0, Voice: ""},
-		Video:         job.VideoSetting{Resolution: "720x1280", FPS: 25, Speed: 1.0},
+		Video:         job.VideoSetting{Resolution: "720x1280", FPS: 25},
 		BGM:           job.BGMSetting{Source: "", Volume: 0.0},
 		SubtitleStyle: job.SubtitleStyle{Size: 28, Color: "FFFFFF", MaxLineWidth: 18},
 	}

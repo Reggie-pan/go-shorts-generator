@@ -14,8 +14,8 @@ type probeFormat struct {
 	} `json:"format"`
 }
 
-// AudioDurationMS 使用 ffprobe 取得音訊長度。
-func AudioDurationMS(path string) (int, error) {
+// AudioDurationSeconds 使用 ffprobe 取得音訊長度 (秒)。
+func AudioDurationSeconds(path string) (float64, error) {
 	cmd := exec.Command("ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", path)
 	out, err := cmd.Output()
 	if err != nil {
@@ -29,7 +29,7 @@ func AudioDurationMS(path string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return int(sec * 1000), nil
+	return sec, nil
 }
 
 // PickFirstAudio 從指定目錄挑選第一個 mp3/wav 檔作為備援。

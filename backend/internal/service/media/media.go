@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"video-smith/backend/internal/service/job"
@@ -41,8 +42,7 @@ func PrepareMaterials(base string, mats []job.Material) ([]string, error) {
 				return nil, fmt.Errorf("下載素材失敗: %s %v", out, err)
 			}
 		} else {
-			in := m.PathOrURL
-			out, err := utils.RunCmd("cp", in, target)
+			out, err := utils.RunCmd("cp", m.PathOrURL, target)
 			if err != nil {
 				return nil, fmt.Errorf("複製素材失敗: %s %v", out, err)
 			}
@@ -71,7 +71,6 @@ func BuildVideoTimeline(prepared []string, mats []job.Material, needDuration int
 		cursor += d
 		idx++
 		if idx == len(mats) && cursor < needDuration {
-			// 補最後一個素材至足夠
 			last := mats[len(mats)-1]
 			segments = append(segments, Segment{
 				Path:  prepared[len(prepared)-1],
@@ -102,16 +101,33 @@ func MakeSegments(base, resolution string, fps int, segments []Segment) (string,
 	for i, seg := range segments {
 		target := filepath.Join(outDir, fmt.Sprintf("seg_%d.mp4", i))
 		durationSec := float64(seg.End-seg.Start) / 1000
+
+		// 解析目標解析度
+		w, h := 1080, 1920
+		if parts := strings.Split(resolution, "x"); len(parts) == 2 {
+			if v, err := strconv.Atoi(parts[0]); err == nil {
+				w = v
+			}
+			if v, err := strconv.Atoi(parts[1]); err == nil {
+				h = v
+			}
+		}
+
+		// 建構 filter: 縮放並保持比例(decrease)，然後補黑邊置中，最後設定 SAR 為 1:1
+		// scale=w:h:force_original_aspect_ratio=decrease
+		// pad=w:h:(ow-iw)/2:(oh-ih)/2
+		// setsar=1
+		vf := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=%d",
+			w, h, w, h, fps)
+
 		if seg.Type == "image" {
-			_, err := utils.RunCmd("ffmpeg", "-y", "-loop", "1", "-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
-				"-vf", fmt.Sprintf("scale=%s,fps=%d", resolution, fps), "-pix_fmt", "yuv420p", target)
-			if err != nil {
+			if _, err := utils.RunCmd("ffmpeg", "-y", "-loop", "1", "-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
+				"-vf", vf, "-pix_fmt", "yuv420p", target); err != nil {
 				return "", fmt.Errorf("製作圖片片段失敗: %v", err)
 			}
 		} else {
-			_, err := utils.RunCmd("ffmpeg", "-y", "-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
-				"-vf", fmt.Sprintf("scale=%s,fps=%d", resolution, fps), "-pix_fmt", "yuv420p", target)
-			if err != nil {
+			if _, err := utils.RunCmd("ffmpeg", "-y", "-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
+				"-vf", vf, "-pix_fmt", "yuv420p", target); err != nil {
 				return "", fmt.Errorf("裁切影片片段失敗: %v", err)
 			}
 		}
@@ -120,34 +136,82 @@ func MakeSegments(base, resolution string, fps int, segments []Segment) (string,
 	concatFile := filepath.Join(outDir, "list.txt")
 	_ = os.WriteFile(concatFile, []byte(strings.Join(list, "\n")), 0o644)
 	final := filepath.Join(base, "video.mp4")
-	_, err := utils.RunCmd("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatFile, "-c", "copy", final)
-	if err != nil {
+	if _, err := utils.RunCmd("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatFile, "-c", "copy", final); err != nil {
 		return "", fmt.Errorf("合併片段失敗: %v", err)
 	}
 	return final, nil
 }
 
-// BuildASS 依樣式產生字幕檔。
-func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine) (string, error) {
-	lines := []string{
-		"[Script Info]",
-		"ScriptType: v4.00+",
-		"[V4+ Styles]",
-		fmt.Sprintf("Style: Default,%s,%d,&H%s,0,0,0,0,100,100,0,0,1,2,2,2,10,%d,10,10,1", style.Font, style.Size, style.Color, style.YOffset),
-		"[Events]",
-		"Format: Layer, Start, End, Style, Text",
+// BuildASS 依樣式產生字幕檔，並根據解析度自動放大。
+func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, resolution string) (string, job.SubtitleStyle, error) {
+	_, resY := 1080, 1920
+	if style.Font == "" {
+		style.Font = "Noto Sans CJK TC"
 	}
+	if style.Color == "" {
+		style.Color = "FFFFFF"
+	}
+	// 解析度處理：優先 request，次之環境變數 VIDEO_RESOLUTION
+	if resolution == "" {
+		resolution = os.Getenv("VIDEO_RESOLUTION")
+	}
+	if resolution != "" {
+		if p := strings.Split(resolution, "x"); len(p) == 2 {
+			if _, err := strconv.Atoi(p[0]); err == nil {
+				// resX = w
+			}
+			if h, err := strconv.Atoi(p[1]); err == nil {
+				resY = h
+			}
+		}
+	}
+	// 自動預設值（僅在未設定時）
+	if style.Size <= 0 {
+		style.Size = 48
+	}
+	if style.YOffset <= 0 {
+		if resY >= 1200 {
+			style.YOffset = 80
+		} else if resY >= 720 {
+			style.YOffset = 60
+		} else {
+			style.YOffset = 40
+		}
+	}
+	color := strings.TrimPrefix(style.Color, "#")
+	if len(color) == 6 {
+		r := color[0:2]
+		g := color[2:4]
+		b := color[4:6]
+		color = "00" + b + g + r // AA + BBGGRR
+	}
+
+	var b strings.Builder
+	b.WriteString("[Script Info]\n")
+	b.WriteString("ScriptType: v4.00+\n")
+	// b.WriteString(fmt.Sprintf("PlayResX: %d\n", resX))
+	// b.WriteString(fmt.Sprintf("PlayResY: %d\n", resY))
+	b.WriteString("[V4+ Styles]\n")
+	b.WriteString("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
+	// BorderStyle=1，Outline=4，Shadow=1，Alignment=2（底中），MarginL/R=20，MarginV=YOffset
+	b.WriteString(fmt.Sprintf("Style: Default,%s,%d,&H%s,&H00FFFFFF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,4,1,2,20,20,%d,1\n", style.Font, style.Size, color, style.YOffset))
+	b.WriteString("[Events]\n")
+	b.WriteString("Format: Layer, Start, End, Style, Text\n")
 	for _, seg := range segments {
 		start := formatASSTime(seg.Start)
 		end := formatASSTime(seg.End)
 		text := strings.ReplaceAll(seg.Text, "\n", "\\N")
-		lines = append(lines, fmt.Sprintf("Dialogue: 0,%s,%s,Default,%s", start, end, text))
+		b.WriteString(fmt.Sprintf("Dialogue: 0,%s,%s,Default,%s\n", start, end, text))
 	}
+
+	content := b.String()
+	fmt.Printf("Generated ASS Content:\n%s\n", content)
+
 	path := filepath.Join(base, "subtitle.ass")
-	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
-		return "", err
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return "", style, err
 	}
-	return path, nil
+	return path, style, nil
 }
 
 func formatASSTime(ms int) string {

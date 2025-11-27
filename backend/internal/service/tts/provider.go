@@ -7,7 +7,7 @@ import (
 )
 
 type Provider interface {
-	Synthesize(text, voice, locale string, speed, pitch float64) (string, int, error)
+	Synthesize(text, voice, locale string, speed, pitch float64) (string, float64, error)
 }
 
 func GetProvider(name string, cfg *config.Config) (Provider, error) {

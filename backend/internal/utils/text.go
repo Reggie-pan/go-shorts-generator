@@ -71,3 +71,30 @@ func BuildTimeline(lines []string, durations []int) []SubtitleSegment {
 	}
 	return segments
 }
+
+// BuildTimelineFloat 依 TTS 句長 (秒) 生成字幕時間軸 (ms)，使用 float64 避免累積誤差。
+func BuildTimelineFloat(lines []string, durations []float64) []SubtitleSegment {
+	segments := []SubtitleSegment{}
+	var cursor float64
+	for i, line := range lines {
+		dur := 0.0
+		if i < len(durations) {
+			dur = durations[i]
+		}
+		if dur == 0 {
+			dur = 1.0
+		}
+
+		startMs := int(cursor * 1000)
+		endMs := int((cursor + dur) * 1000)
+
+		seg := SubtitleSegment{
+			Text:  line,
+			Start: startMs,
+			End:   endMs,
+		}
+		segments = append(segments, seg)
+		cursor += dur
+	}
+	return segments
+}

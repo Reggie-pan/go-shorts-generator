@@ -10,12 +10,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gorilla/mux"
 	"video-smith/backend/internal/config"
 	"video-smith/backend/internal/service/job"
 	"video-smith/backend/internal/storage"
 	"video-smith/backend/internal/utils"
 	"video-smith/backend/internal/worker"
+
+	"github.com/gorilla/mux"
+	"github.com/rs/zerolog/log"
 )
 
 type Handlers struct {
@@ -36,6 +38,9 @@ func (h *Handlers) CreateJob(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "請提供合法 JSON"})
 		return
 	}
+
+	log.Info().Interface("request", req).Msg("收到建立任務請求")
+	log.Info().Interface("subtitle_style", req.SubtitleStyle).Msg("收到字幕樣式參數")
 
 	if err := req.Validate(); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})

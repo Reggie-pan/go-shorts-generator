@@ -19,7 +19,7 @@ type AzureProvider struct {
 	Region string
 }
 
-func (a *AzureProvider) Synthesize(text, voice, locale string, speed, pitch float64) (string, int, error) {
+func (a *AzureProvider) Synthesize(text, voice, locale string, speed, pitch float64) (string, float64, error) {
 	if a.Key == "" || a.Region == "" {
 		return (&EspeakProvider{}).Synthesize(text, voice, locale, speed, pitch)
 	}
@@ -55,6 +55,6 @@ func (a *AzureProvider) Synthesize(text, voice, locale string, speed, pitch floa
 	if _, err := io.Copy(f, resp.Body); err != nil {
 		return "", 0, err
 	}
-	dur, _ := utils.AudioDurationMS(tmp)
+	dur, _ := utils.AudioDurationSeconds(tmp)
 	return tmp, dur, nil
 }

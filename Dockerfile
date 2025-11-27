@@ -1,5 +1,5 @@
-FROM golang:1.21-bullseye AS backend-builder
-RUN apt-get update && apt-get install -y ffmpeg espeak curl && rm -rf /var/lib/apt/lists/*
+FROM golang:1.24-bullseye AS backend-builder
+RUN apt-get update && apt-get install -y ffmpeg espeak curl fonts-noto-cjk fontconfig && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/backend
 COPY backend/go.mod backend/go.sum* ./
 RUN go mod download
@@ -14,7 +14,10 @@ COPY frontend/. .
 RUN npm run build
 
 FROM debian:bullseye-slim
-RUN apt-get update && apt-get install -y ffmpeg espeak curl ca-certificates && rm -rf /var/lib/apt/lists/*
+ENV TZ=Asia/Taipei
+RUN apt-get update && apt-get install -y ffmpeg espeak curl ca-certificates fonts-noto-cjk fontconfig tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    rm -rf /var/lib/apt/lists/*
 ENV PORT=8080
 ENV STORAGE_PATH=/data
 ENV BGM_PATH=/assets/bgm

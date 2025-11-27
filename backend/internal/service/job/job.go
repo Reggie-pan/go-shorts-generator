@@ -24,9 +24,8 @@ type TTSSetting struct {
 }
 
 type VideoSetting struct {
-	Resolution string  `json:"resolution"`
-	FPS        int     `json:"fps"`
-	Speed      float64 `json:"speed"`
+	Resolution string `json:"resolution"`
+	FPS        int    `json:"fps"`
 }
 
 type BGMSetting struct {
@@ -95,9 +94,6 @@ func (r *JobCreateRequest) Validate() error {
 	if r.Video.FPS == 0 {
 		r.Video.FPS = 30
 	}
-	if r.Video.Speed == 0 {
-		r.Video.Speed = 1.0
-	}
 	if r.TTS.Speed == 0 {
 		r.TTS.Speed = 1.0
 	}
@@ -111,7 +107,7 @@ func (r *JobCreateRequest) Validate() error {
 		r.SubtitleStyle.Color = "FFFFFF"
 	}
 	if r.SubtitleStyle.MaxLineWidth == 0 {
-		r.SubtitleStyle.MaxLineWidth = 28
+		r.SubtitleStyle.MaxLineWidth = 16
 	}
 	return nil
 }

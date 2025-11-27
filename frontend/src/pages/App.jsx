@@ -8,7 +8,7 @@ const defaultRequest = {
   tts: { provider: 'free', voice: '', locale: 'en-US', speed: 1, pitch: 0 },
   video: { resolution: '1080x1920', fps: 30, speed: 1 },
   bgm: { source: 'preset', path_or_url_or_name: 'default.mp3', volume: 0.2 },
-  subtitle_style: { font: 'NotoSansTC', size: 36, color: 'FFFFFF', y_offset: 40, max_line_width: 24 }
+  subtitle_style: { font: 'Noto Sans TC', size: 36, color: 'FFFFFF', y_offset: 40, max_line_width: 24 }
 }
 
 export default function App() {
@@ -63,6 +63,7 @@ export default function App() {
       <div style={{ marginBottom: 12 }}>
         <a href="/api/v1/swagger.json" style={{ color: '#93c5fd' }} target="_blank" rel="noreferrer">查看 Swagger JSON</a>
       </div>
+
       <div className="card">
         <h2>建立任務</h2>
         <label>腳本</label>
@@ -70,23 +71,23 @@ export default function App() {
 
         <h3>素材設定</h3>
         {form.materials.map((m, idx) => (
-          <div key={idx} style={{ border: '1px solid #1f2937', padding: 8, borderRadius: 8, marginBottom: 8 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div style={{ flex: 1 }}>
+          <div key={idx} className="material-block">
+            <div className="grid">
+              <div>
                 <label>類型</label>
                 <select value={m.type} onChange={(e) => updateMaterial(idx, 'type', e.target.value)}>
                   <option value="image">image</option>
                   <option value="video">video</option>
                 </select>
               </div>
-              <div style={{ flex: 1 }}>
+              <div>
                 <label>來源</label>
                 <select value={m.source} onChange={(e) => updateMaterial(idx, 'source', e.target.value)}>
                   <option value="url">url</option>
                   <option value="upload">upload(路徑)</option>
                 </select>
               </div>
-              <div style={{ flex: 1 }}>
+              <div>
                 <label>秒數</label>
                 <input type="number" value={m.duration_sec} onChange={(e) => updateMaterial(idx, 'duration_sec', Number(e.target.value))} />
               </div>
@@ -101,8 +102,8 @@ export default function App() {
         <button onClick={addMaterial} style={{ background: '#0ea5e9', color: '#083344' }}>新增素材</button>
 
         <h3>TTS</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ flex: 1 }}>
+        <div className="grid">
+          <div>
             <label>Provider</label>
             <select value={form.tts.provider} onChange={(e) => setForm({ ...form, tts: { ...form.tts, provider: e.target.value } })}>
               <option value="free">free_espeak</option>
@@ -111,45 +112,44 @@ export default function App() {
               <option value="azure_v2">azure_v2</option>
             </select>
           </div>
-          <div style={{ flex: 1 }}>
+          <div>
             <label>Locale</label>
             <input value={form.tts.locale} onChange={(e) => setForm({ ...form, tts: { ...form.tts, locale: e.target.value } })} />
           </div>
-          <div style={{ flex: 1 }}>
+          <div>
             <label>Voice Name</label>
             <input value={form.tts.voice} onChange={(e) => setForm({ ...form, tts: { ...form.tts, voice: e.target.value } })} />
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ flex: 1 }}>
+          <div>
             <label>語速</label>
             <input type="number" step="0.1" value={form.tts.speed} onChange={(e) => setForm({ ...form, tts: { ...form.tts, speed: Number(e.target.value) } })} />
           </div>
-          <div style={{ flex: 1 }}>
+          <div>
             <label>音高</label>
             <input type="number" step="0.1" value={form.tts.pitch} onChange={(e) => setForm({ ...form, tts: { ...form.tts, pitch: Number(e.target.value) } })} />
           </div>
         </div>
 
         <h3>影片</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ flex: 1 }}>
+        <div className="grid">
+          <div>
             <label>解析度</label>
-            <input value={form.video.resolution} onChange={(e) => setForm({ ...form, video: { ...form.video, resolution: e.target.value } })} />
+            <select value={form.video.resolution} onChange={(e) => setForm({ ...form, video: { ...form.video, resolution: e.target.value } })}>
+              <option value="1080x1920">1080x1920 (9:16)</option>
+              <option value="720x1280">720x1280 (9:16)</option>
+              <option value="1080x1080">1080x1080 (1:1)</option>
+              <option value="1920x1080">1920x1080 (16:9)</option>
+            </select>
           </div>
-          <div style={{ flex: 1 }}>
+          <div>
             <label>FPS</label>
             <input type="number" value={form.video.fps} onChange={(e) => setForm({ ...form, video: { ...form.video, fps: Number(e.target.value) } })} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label>速度倍率</label>
-            <input type="number" step="0.1" value={form.video.speed} onChange={(e) => setForm({ ...form, video: { ...form.video, speed: Number(e.target.value) } })} />
           </div>
         </div>
 
         <h3>背景音樂</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ flex: 1 }}>
+        <div className="grid">
+          <div>
             <label>來源</label>
             <select value={form.bgm.source} onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, source: e.target.value } })}>
               <option value="preset">preset</option>
@@ -157,7 +157,7 @@ export default function App() {
               <option value="upload">upload(路徑)</option>
             </select>
           </div>
-          <div style={{ flex: 1 }}>
+          <div>
             <label>音量(0~1)</label>
             <input type="number" step="0.05" value={form.bgm.volume} onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, volume: Number(e.target.value) } })} />
           </div>
@@ -172,6 +172,57 @@ export default function App() {
         ) : (
           <input value={form.bgm.path_or_url_or_name} onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, path_or_url_or_name: e.target.value } })} />
         )}
+
+        <h3>字幕樣式</h3>
+        <div className="grid">
+          <div>
+            <label>字體</label>
+            <input value={form.subtitle_style.font} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, font: e.target.value } })} />
+          </div>
+          <div>
+            <label>字型大小</label>
+            <input type="number" value={form.subtitle_style.size} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, size: Number(e.target.value) } })} />
+          </div>
+          <div>
+            <label>Y Offset (高度)</label>
+            <input type="number" value={form.subtitle_style.y_offset} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, y_offset: Number(e.target.value) } })} />
+          </div>
+          <div>
+            <label>顏色</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input 
+                type="color" 
+                value={`#${form.subtitle_style.color || 'FFFFFF'}`} 
+                onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
+                style={{ width: 60, height: 32 }}
+              />
+              <input 
+                type="text" 
+                value={form.subtitle_style.color || 'FFFFFF'} 
+                onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
+                placeholder="FFFFFF"
+                maxLength="6"
+                style={{ width: 100 }}
+              />
+            </div>
+          </div>
+          <div>
+            <label>單行最大字數</label>
+            <input type="number" value={form.subtitle_style.max_line_width} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, max_line_width: Number(e.target.value) } })} />
+          </div>
+        </div>
+        <div style={{ marginTop: 8, padding: 12, border: '1px solid #1f2937', borderRadius: 8, background: '#0b1223' }}>
+          <div style={{ marginBottom: 6, color: '#cbd5f5' }}>字幕預覽</div>
+          <div
+            style={{
+              fontFamily: form.subtitle_style.font || 'Noto Sans TC',
+              fontSize: `${form.subtitle_style.size || 36}px`,
+              color: `#${form.subtitle_style.color || 'FFFFFF'}`
+            }}
+          >
+            {form.script ? form.script.slice(0, 12) : '預覽文字'}
+          </div>
+        </div>
 
         <div style={{ marginTop: 12 }}>
           <button onClick={submit}>送出</button>

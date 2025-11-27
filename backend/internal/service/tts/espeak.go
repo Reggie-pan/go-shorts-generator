@@ -12,7 +12,7 @@ import (
 // EspeakProvider 使用 espeak 合成，CPU-only，免費。
 type EspeakProvider struct{}
 
-func (e *EspeakProvider) Synthesize(text, voice, locale string, speed, pitch float64) (string, int, error) {
+func (e *EspeakProvider) Synthesize(text, voice, locale string, speed, pitch float64) (string, float64, error) {
 	if speed == 0 {
 		speed = 1.0
 	}
@@ -24,6 +24,6 @@ func (e *EspeakProvider) Synthesize(text, voice, locale string, speed, pitch flo
 	if err != nil {
 		return "", 0, err
 	}
-	dur, _ := utils.AudioDurationMS(outPath)
+	dur, _ := utils.AudioDurationSeconds(outPath)
 	return outPath, dur, nil
 }
