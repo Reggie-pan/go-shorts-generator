@@ -39,17 +39,17 @@ Constraints:
 1. Max characters per segment: %d.
 2. Separator: Use "|||" to separate distinct time-based segments.
 3. No Line Breaks: Do NOT use "\n" or any other line break characters within a segment.
-4. Remove Punctuation: REMOVE ALL punctuation marks (e.g., ，。？！「」".,?!) from the output. The output should contain ONLY text.
+4. Remove Punctuation: REMOVE punctuation marks (e.g., ，。？！「」?!), BUT PRESERVE decimal points in numbers (e.g. 3.14) and percentage signs (%%). The output should contain ONLY text and numbers.
 5. Merge Aggressively: Ignore original punctuation for segmentation. If multiple short phrases fit within the max character limit, MERGE them into a single line. Do NOT split just because there was a comma in the original text.
 6. Output Format: Pure text with separators. No markdown, no explanations.
 
 Examples:
 
 Input:
-甚至有網友笑說台灣人對Threads的熱情已經發展出獨特的社群文化，「台灣人用Threads已經到上廁所求救沒衛生紙、吃便當沒筷子都會有人送過去的程度」 (Max: 16)
+甚至有網友說台灣人對Threads的熱愛已經發展出一套獨特的社群文化，台灣人用Threads已經到了像廁所求救、沒衛生紙、便當沒筷子都會有人送去的程度。(Max: 16)
 
 Output:
-甚至有網友笑說台灣人對Threads的熱情|||已經發展出獨特的社群文化|||台灣人用Threads已經到上廁所求救|||沒衛生紙吃便當沒筷子都會有人送過去的程度
+甚至有網友說台灣人對Threads的熱愛|||已經發展出一套獨特的社群文化|||台灣人用Threads已經到了像廁所求救|||沒衛生紙便當沒筷子都會有人送去的程度
 
 Input:
 Welcome to the video. Today, we are going to talk about artificial intelligence. (Max: 50)

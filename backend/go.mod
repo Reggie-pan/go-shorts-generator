@@ -1,4 +1,4 @@
-module video-smith/backend
+module github.com/Reggie-pan/go-shorts-generator
 
 go 1.24.0
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,15 +12,17 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"video-smith/backend/internal/ai"
-	"video-smith/backend/internal/api"
-	"video-smith/backend/internal/config"
-	"video-smith/backend/internal/storage"
-	"video-smith/backend/internal/worker"
+	"github.com/Reggie-pan/go-shorts-generator/internal/ai"
+	"github.com/Reggie-pan/go-shorts-generator/internal/api"
+	"github.com/Reggie-pan/go-shorts-generator/internal/config"
+	"github.com/Reggie-pan/go-shorts-generator/internal/storage"
+	"github.com/Reggie-pan/go-shorts-generator/internal/worker"
 )
 
 func main() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339})
+	// 使用 ConsoleWriter 輸出以符合使用者需求，並嘗試寫入 Stderr 避免 stdout 緩衝問題
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
+	// 關閉預設 JSON 輸出以獲取清晰的 log 輸出，並啟用 ConsoleWriter 可能的緩衝修正
 
 	cfg, err := config.Load()
 	if err != nil {

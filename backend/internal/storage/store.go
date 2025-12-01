@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"video-smith/backend/internal/service/job"
+	"github.com/Reggie-pan/go-shorts-generator/internal/service/job"
 )
 
 type Store struct {
@@ -88,5 +88,12 @@ func (s *Store) DeleteJob(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.data, id)
+	return s.persist()
+}
+
+func (s *Store) DeleteAllJobs() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data = make(map[string]*job.Record)
 	return s.persist()
 }

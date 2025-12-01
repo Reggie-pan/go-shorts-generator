@@ -1,14 +1,21 @@
-{
+﻿{
   "openapi": "3.0.1",
   "info": {
-    "title": "Video Smith API",
+    "title": "GoShortsGenerator API",
     "version": "1.0.0",
     "description": "短影片自動生成任務 API"
   },
+  "tags": [
+    { "name": "Jobs", "description": "任務管理相關 API" },
+    { "name": "Resources", "description": "系統資源 (字型、BGM)" },
+    { "name": "Utilities", "description": "工具 (上傳、預覽、清理)" }
+  ],
   "paths": {
     "/api/v1/jobs": {
       "post": {
+        "tags": ["Jobs"],
         "summary": "新增任務",
+        "description": "建立一個新的影片生成任務。需提供腳本、素材、TTS 設定等。",
         "requestBody": {
           "required": true,
           "content": {
@@ -17,51 +24,254 @@
             }
           }
         },
-        "responses": { "201": { "description": "建立成功", "content": { "application/json": { "schema": { "type": "object", "properties": { "id": { "type": "string" } } } } } } }
+        "responses": {
+          "201": {
+            "description": "建立成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "id": { "type": "string", "example": "550e8400-e29b-41d4-a716-446655440000" } }
+                }
+              }
+            }
+          }
+        }
       },
       "get": {
+        "tags": ["Jobs"],
         "summary": "取得任務列表",
         "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "頁碼" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "每頁筆數" }
         ],
         "responses": { "200": { "description": "列表", "content": { "application/json": {} } } }
+      },
+      "delete": {
+        "tags": ["Jobs"],
+        "summary": "刪除所有任務",
+        "description": "刪除所有任務及其相關檔案 (無法復原)",
+        "responses": {
+          "200": {
+            "description": "已刪除所有任務",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "deleted_all" }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/jobs/{id}": {
       "get": {
+        "tags": ["Jobs"],
         "summary": "查詢任務狀態",
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "任務 ID" }
+        ],
         "responses": { "200": { "description": "狀態", "content": { "application/json": {} } } }
       },
       "delete": {
+        "tags": ["Jobs"],
         "summary": "刪除任務",
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "任務 ID" }
+        ],
         "responses": { "200": { "description": "已刪除" } }
       }
     },
     "/api/v1/jobs/{id}/result": {
       "get": {
+        "tags": ["Jobs"],
         "summary": "下載影片",
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": { "200": { "description": "MP4", "content": { "video/mp4": { } } } }
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "任務 ID" }
+        ],
+        "responses": { "200": { "description": "MP4", "content": { "video/mp4": {} } } }
       }
     },
     "/api/v1/jobs/{id}/cancel": {
       "post": {
+        "tags": ["Jobs"],
         "summary": "終止任務",
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "任務 ID" }
+        ],
         "responses": { "200": { "description": "已取消" } }
       }
     },
     "/api/v1/presets/bgm": {
       "get": {
+        "tags": ["Resources"],
         "summary": "列出預設 BGM",
         "responses": { "200": { "description": "清單", "content": { "application/json": {} } } }
       }
     },
+    "/api/v1/fonts": {
+      "get": {
+        "tags": ["Resources"],
+        "summary": "取得可用字型列表",
+        "description": "列出系統中所有可用的字型",
+        "responses": {
+          "200": {
+            "description": "字型列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string", "example": "Noto Sans TC" }
+                        }
+                      },
+                      "description": "字型列表"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "無法獲取字型列表"
+          }
+        }
+      }
+    },
+    "/api/v1/upload": {
+      "post": {
+        "tags": ["Utilities"],
+        "summary": "上傳檔案",
+        "description": "上傳素材或 BGM 檔案",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "上傳成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string", "example": "uploads/file.mp4" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tts/voices": {
+      "get": {
+        "tags": ["Resources"],
+        "summary": "取得 TTS 語音列表",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "schema": { "type": "string", "default": "azure_v1" },
+            "description": "TTS 提供者 (azure_v1, azure_v2)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "語音列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string", "example": "zh-TW-YunJheNeural" },
+                          "display_name": { "type": "string", "example": "YunJhe (zh-TW, Male)" },
+                          "locale": { "type": "string", "example": "zh-TW" },
+                          "gender": { "type": "string", "example": "Male" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/temp": {
+      "delete": {
+        "tags": ["Utilities"],
+        "summary": "清空暫存素材",
+        "description": "刪除所有以 upload_ 開頭的暫存檔案",
+        "responses": {
+          "200": {
+            "description": "清理成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deleted_count": { "type": "integer", "description": "刪除的檔案數量", "example": 5 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/preview/subtitle": {
+      "post": {
+        "tags": ["Utilities"],
+        "summary": "預覽字幕樣式",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "example": "預覽文字 Preview", "description": "要預覽的文字" },
+                  "style": { "$ref": "#/components/schemas/SubtitleStyle" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "預覽圖片 (PNG)",
+            "content": { "image/png": {} }
+          }
+        }
+      }
+    },
     "/api/v1/swagger.json": {
       "get": {
+        "tags": ["Utilities"],
         "summary": "Swagger 文件（本檔）",
         "responses": { "200": { "description": "OK" } }
       }
@@ -69,59 +279,67 @@
   },
   "components": {
     "schemas": {
+      "SubtitleStyle": {
+        "type": "object",
+        "properties": {
+          "font": { "type": "string", "example": "Noto Sans TC", "description": "字型名稱" },
+          "size": { "type": "integer", "example": 36, "description": "字體大小 (px)" },
+          "color": { "type": "string", "example": "FFFFFF", "description": "字體顏色 (Hex, 不含 #)" },
+          "y_offset": { "type": "integer", "example": 70, "description": "垂直偏移量 (px)" },
+          "max_line_width": { "type": "integer", "example": 16, "description": "每行最大字數" },
+          "outline_width": { "type": "number", "example": 1.5, "description": "描邊寬度" },
+          "outline_color": { "type": "string", "example": "000000", "description": "描邊顏色 (Hex)" }
+        }
+      },
       "JobCreateRequest": {
         "type": "object",
         "properties": {
-          "script": { "type": "string" },
+          "script": { "type": "string", "example": "這是一段測試腳本。", "description": "影片腳本內容" },
           "materials": {
             "type": "array",
+            "description": "素材列表",
             "items": {
               "type": "object",
               "properties": {
-                "type": { "type": "string", "enum": ["image", "video"] },
-                "source": { "type": "string", "enum": ["upload", "url"] },
-                "path_or_url": { "type": "string" },
-                "duration_sec": { "type": "number" }
+                "type": { "type": "string", "enum": ["image", "video"], "description": "素材類型" },
+                "source": { "type": "string", "enum": ["upload", "url"], "description": "素材來源" },
+                "path_or_url": { "type": "string", "description": "檔案路徑或 URL" },
+                "duration_sec": { "type": "number", "description": "持續時間 (秒)" },
+                "mute": { "type": "boolean", "description": "是否靜音 (僅 video 有效)" }
               },
               "required": ["type", "source", "path_or_url", "duration_sec"]
             }
           },
           "tts": {
             "type": "object",
+            "description": "TTS 設定",
             "properties": {
-              "provider": { "type": "string", "enum": ["google", "azure_v1", "azure_v2", "free"] },
-              "voice": { "type": "string" },
-              "locale": { "type": "string" },
-              "speed": { "type": "number" },
-              "pitch": { "type": "number" }
+              "provider": { "type": "string", "enum": ["google", "azure_v1", "azure_v2"], "example": "azure_v1" },
+              "voice": { "type": "string", "example": "zh-TW-YunJheNeural" },
+              "locale": { "type": "string", "example": "zh-TW" },
+              "speed": { "type": "number", "example": 1.0 },
+              "pitch": { "type": "number", "example": 0.0 }
             }
           },
           "video": {
             "type": "object",
+            "description": "影片輸出設定",
             "properties": {
-              "resolution": { "type": "string" },
-              "fps": { "type": "integer" },
-              "speed": { "type": "number" }
+              "resolution": { "type": "string", "example": "1080x1920" },
+              "fps": { "type": "integer", "example": 30 },
+              "speed": { "type": "number", "example": 1.0 }
             }
           },
           "bgm": {
             "type": "object",
+            "description": "背景音樂設定",
             "properties": {
-              "source": { "type": "string", "enum": ["upload", "url", "preset"] },
-              "path_or_url_or_name": { "type": "string" },
-              "volume": { "type": "number" }
+              "source": { "type": "string", "enum": ["upload", "url", "preset", "none"], "example": "preset" },
+              "path_or_url_or_name": { "type": "string", "example": "happy.mp3" },
+              "volume": { "type": "number", "example": 0.2 }
             }
           },
-          "subtitle_style": {
-            "type": "object",
-            "properties": {
-              "font": { "type": "string" },
-              "size": { "type": "integer" },
-              "color": { "type": "string" },
-              "y_offset": { "type": "integer" },
-              "max_line_width": { "type": "integer" }
-            }
-          }
+          "subtitle_style": { "$ref": "#/components/schemas/SubtitleStyle" }
         },
         "required": ["script", "materials", "tts", "video"]
       }

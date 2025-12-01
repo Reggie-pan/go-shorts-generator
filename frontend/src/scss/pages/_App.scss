@@ -1,0 +1,78 @@
+/* App Page Specific Styles */
+
+.api-docs-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(168, 85, 247, 0.2));
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--color-primary-light);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  transition: all var(--transition-base);
+}
+
+.api-docs-link:hover {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.3), rgba(168, 85, 247, 0.3));
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(14, 165, 233, 0.2);
+  transform: translateY(-1px);
+}
+
+/* 預覽區塊 */
+.preview-box {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6));
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md), inset 0 0 20px rgba(14, 165, 233, 0.05);
+  transition: all var(--transition-base);
+}
+
+.preview-box:hover {
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(14, 165, 233, 0.15);
+}
+
+.preview-label {
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.preview-label i {
+  color: var(--color-primary);
+}
+
+/* 操作按鈕組 */
+.actions-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.id-cell {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+  max-width: 250px;
+  user-select: all;
+}
+
+.time-cell {
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}

@@ -8,15 +8,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"video-smith/backend/internal/config"
-	"video-smith/backend/internal/service/job"
-	"video-smith/backend/internal/storage"
+	"github.com/Reggie-pan/go-shorts-generator/internal/config"
+	"github.com/Reggie-pan/go-shorts-generator/internal/service/job"
+	"github.com/Reggie-pan/go-shorts-generator/internal/storage"
 )
 
-// 需設 RUN_E2E=1 才執行，避免 CI 無 ffmpeg/espeak 時失敗。
+// 需要 RUN_E2E=1 才執行，因為 CI 無 ffmpeg/espeak 會失敗
 func TestProcessPipeline(t *testing.T) {
 	if os.Getenv("RUN_E2E") != "1" {
-		t.Skip("E2E 測試預設略過，設 RUN_E2E=1 以啟用")
+		t.Skip("E2E 測試未設定，設 RUN_E2E=1 以執行")
 	}
 	tmp, err := os.MkdirTemp("", "jobs")
 	if err != nil {
@@ -42,12 +42,12 @@ func TestProcessPipeline(t *testing.T) {
 	w := NewWorker(cfg, store, q, nil)
 
 	req := job.JobCreateRequest{
-		Script: "這是一段測試腳本。第二句台詞。",
+		Script: "這是一段測試腳本。第二句測試。",
 		Materials: []job.Material{
-			{Type: "image", Source: "upload", PathOrURL: img1, DurationSec: 2},
-			{Type: "image", Source: "upload", PathOrURL: img2, DurationSec: 2},
+			{Type: "image", Source: "upload", Path: img1, DurationSec: 2},
+			{Type: "image", Source: "upload", Path: img2, DurationSec: 2},
 		},
-		TTS:           job.TTSSetting{Provider: "free", Locale: "en", Speed: 1.0, Voice: ""},
+		TTS:           job.TTSSetting{Provider: "azure_v1", Locale: "en", Speed: 1.0, Voice: ""},
 		Video:         job.VideoSetting{Resolution: "720x1280", FPS: 25},
 		BGM:           job.BGMSetting{Source: "", Volume: 0.0},
 		SubtitleStyle: job.SubtitleStyle{Size: 28, Color: "FFFFFF", MaxLineWidth: 18},
