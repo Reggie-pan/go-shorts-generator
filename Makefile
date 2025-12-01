@@ -1,8 +1,8 @@
 build:
-\tdocker build -t video-smith .
+	docker build -t goshortsgenerator .
 
 run:
-\tdocker run --rm -it -p 8080:8080 -v ${PWD}/data:/data -v ${PWD}/assets:/assets video-smith
+	docker run --rm -it -p 8080:8080 -v ${PWD}/data:/data -v ${PWD}/assets:/assets goshortsgenerator
 
 test:
-\tcd backend && go test ./...
+	cd backend && go test ./...

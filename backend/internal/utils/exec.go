@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// RunCmd 執行外部命令並回傳輸出，便於除錯。
+// RunCmd 執行外部命令並返回輸出，便於除錯
 func RunCmd(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
 	var out bytes.Buffer
@@ -24,7 +24,7 @@ func RunCmd(name string, args ...string) (string, error) {
 	return out.String(), nil
 }
 
-// RunCmdTimeout 加入 timeout 版本，避免外部程式卡住。
+// RunCmdTimeout 加入 timeout 版本，避免外部程式卡住
 func RunCmdTimeout(timeout time.Duration, name string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()

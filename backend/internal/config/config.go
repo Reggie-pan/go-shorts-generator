@@ -9,7 +9,6 @@ import (
 type Config struct {
 	Port        string
 	StoragePath string
-	GoogleKey   string
 	AzureKey    string
 	AzureRegion string
 	FreeTTSPath string
@@ -29,7 +28,6 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Port:        viper.GetString("PORT"),
 		StoragePath: viper.GetString("STORAGE_PATH"),
-		GoogleKey:   viper.GetString("GOOGLE_TTS_KEY"),
 		AzureKey:    viper.GetString("AZURE_TTS_KEY"),
 		AzureRegion: viper.GetString("AZURE_TTS_REGION"),
 		FreeTTSPath: viper.GetString("FREE_TTS_MODEL_PATH"),

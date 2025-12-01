@@ -14,7 +14,7 @@ type probeFormat struct {
 	} `json:"format"`
 }
 
-// AudioDurationSeconds 使用 ffprobe 取得音訊長度 (秒)。
+// AudioDurationSeconds 使用 ffprobe 獲取音訊長度 (秒)
 func AudioDurationSeconds(path string) (float64, error) {
 	cmd := exec.Command("ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", path)
 	out, err := cmd.Output()
@@ -32,7 +32,7 @@ func AudioDurationSeconds(path string) (float64, error) {
 	return sec, nil
 }
 
-// PickFirstAudio 從指定目錄挑選第一個 mp3/wav 檔作為備援。
+// PickFirstAudio 從指定目錄挑選第一個 mp3/wav 檔案作為備用
 func PickFirstAudio(dir string) string {
 	matches, _ := filepath.Glob(filepath.Join(dir, "*.mp3"))
 	if len(matches) > 0 {
@@ -45,7 +45,7 @@ func PickFirstAudio(dir string) string {
 	return ""
 }
 
-// ListAudioFiles 回傳目錄下 mp3/wav 檔名（basename）。
+// ListAudioFiles 回傳目錄下 mp3/wav 檔案（basename）
 func ListAudioFiles(dir string) []string {
 	files := []string{}
 	entries, _ := filepath.Glob(filepath.Join(dir, "*"))

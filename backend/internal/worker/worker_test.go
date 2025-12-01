@@ -2,12 +2,13 @@ package worker
 
 import (
 	"testing"
-	"video-smith/backend/internal/utils"
+
+	"github.com/Reggie-pan/go-shorts-generator/internal/utils"
 )
 
 func TestTimelineSync(t *testing.T) {
-	// 模擬音訊片段長度 (秒)
-	// 假設每段都已經包含了實體靜音 (例如 0.2s)
+	// 模擬各片段長度 (秒)
+	// 假設每段都已經包含靜音 (例如 0.2s)
 	durations := []float64{
 		2.7, // 第一句 (2.5 + 0.2)
 		3.3, // 第二句 (3.1 + 0.2)

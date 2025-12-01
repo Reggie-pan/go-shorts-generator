@@ -1,4 +1,4 @@
-# Video Smith 使用說明（CPU 版）
+# GoShortsGenerator 使用說明（CPU 版）
 
 ## 系統特色
 - Docker 內即可運行，無 GPU 依賴。
@@ -90,6 +90,6 @@ RUN_E2E=1 go test ./... -run ProcessPipeline  # 整合測試（需 ffmpeg+espeak
 docker run --rm -it -p 8080:8080 \
   -v ${PWD}/data:/data -v ${PWD}/assets:/assets \
   -e PORT=8080 -e STORAGE_PATH=/data -e BGM_PATH=/assets/bgm \
-  video-smith
+  goshortsgenerator
 ```
 預期：前端可開啟、透過範例腳本建立任務，數分鐘內產生短影片，可下載 MP4。
