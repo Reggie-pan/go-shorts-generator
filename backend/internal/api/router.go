@@ -9,9 +9,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 
-	"video-smith/backend/internal/config"
-	"video-smith/backend/internal/storage"
-	"video-smith/backend/internal/worker"
+	"github.com/Reggie-pan/go-shorts-generator/internal/config"
+	"github.com/Reggie-pan/go-shorts-generator/internal/storage"
+	"github.com/Reggie-pan/go-shorts-generator/internal/worker"
 )
 
 // corsMiddleware 添加 CORS 標頭
@@ -59,12 +59,22 @@ func NewRouter(cfg *config.Config, store *storage.Store, q *worker.Queue) http.H
 
 	api.HandleFunc("/jobs", h.CreateJob).Methods("POST")
 	api.HandleFunc("/jobs", h.ListJobs).Methods("GET")
+	api.HandleFunc("/jobs", h.DeleteAllJobs).Methods("DELETE")
 	api.HandleFunc("/jobs/{id}", h.GetJob).Methods("GET")
 	api.HandleFunc("/jobs/{id}/result", h.DownloadResult).Methods("GET")
 	api.HandleFunc("/jobs/{id}/cancel", h.CancelJob).Methods("POST")
 	api.HandleFunc("/jobs/{id}", h.DeleteJob).Methods("DELETE")
+	api.HandleFunc("/upload", h.UploadHandler).Methods("POST")
+	api.HandleFunc("/tts/voices", h.ListVoices).Methods("GET")
+	api.HandleFunc("/temp", h.CleanTempFiles).Methods("DELETE")
 	api.HandleFunc("/presets/bgm", h.ListBGM).Methods("GET")
+	api.HandleFunc("/fonts", h.ListFonts).Methods("GET")
+	api.HandleFunc("/preview/subtitle", h.PreviewSubtitle).Methods("POST")
 	api.HandleFunc("/swagger.json", h.Swagger).Methods("GET")
+
+	// 靜態資源：BGM
+	// 注意：這裡直接使用 http.FileServer 暴露目錄，需確保 BGM_PATH 正確
+	r.PathPrefix("/assets/bgm/").Handler(http.StripPrefix("/assets/bgm/", http.FileServer(http.Dir(cfg.BgmPath))))
 
 	// 使用 SPA 文件服務器處理前端路由
 	r.PathPrefix("/").Handler(spaFileServer("/app/public"))

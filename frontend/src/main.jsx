@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './pages/App'
 import SwaggerUI from './pages/SwaggerUI'
-import './style.css'
+import './scss/main.scss'
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>

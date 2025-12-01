@@ -2,6 +2,7 @@ package job
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,9 +11,10 @@ import (
 
 type Material struct {
 	Type        string  `json:"type"`
-	Source      string  `json:"source"`
-	PathOrURL   string  `json:"path_or_url"`
+	Source      string  `json:"source"` // "upload", "url"
+	Path        string  `json:"path"`   // 上傳後的路徑或 URL
 	DurationSec float64 `json:"duration_sec"`
+	Mute        bool    `json:"mute"` // 是否靜音 (僅 video 有效)
 }
 
 type TTSSetting struct {
@@ -24,22 +26,27 @@ type TTSSetting struct {
 }
 
 type VideoSetting struct {
-	Resolution string `json:"resolution"`
-	FPS        int    `json:"fps"`
+	Resolution     string `json:"resolution"` // e.g. "1920x1080"
+	FPS            int    `json:"fps"`
+	Background     string `json:"background"`      // e.g. "000000"
+	BlurBackground bool   `json:"blur_background"` // 是否使用模糊背景
+	Transition     string `json:"transition"`      // e.g. "none", "fade", "wipeleft"
 }
 
 type BGMSetting struct {
-	Source     string  `json:"source"`
-	PathOrName string  `json:"path_or_url_or_name"`
-	Volume     float64 `json:"volume"`
+	Source string  `json:"source"`
+	Path   string  `json:"path"`
+	Volume float64 `json:"volume"`
 }
 
 type SubtitleStyle struct {
-	Font         string `json:"font"`
-	Size         int    `json:"size"`
-	Color        string `json:"color"`
-	YOffset      int    `json:"y_offset"`
-	MaxLineWidth int    `json:"max_line_width"`
+	Font         string  `json:"font"`
+	Size         int     `json:"size"`
+	Color        string  `json:"color"`
+	YOffset      int     `json:"y_offset"`
+	OutlineWidth float64 `json:"outline_width"`
+	OutlineColor string  `json:"outline_color"`
+	MaxLineWidth int     `json:"max_line_width"`
 }
 
 type JobCreateRequest struct {
@@ -78,7 +85,7 @@ func (r *JobCreateRequest) Validate() error {
 		return errors.New("腳本不可空白")
 	}
 	if len(r.Materials) == 0 {
-		return errors.New("至少需要一個素材")
+		return errors.New("素材至少要有一個")
 	}
 	for _, m := range r.Materials {
 		if m.DurationSec <= 0 {
@@ -97,6 +104,12 @@ func (r *JobCreateRequest) Validate() error {
 	if r.TTS.Speed == 0 {
 		r.TTS.Speed = 1.0
 	}
+	if r.BGM.Source != "upload" && r.BGM.Source != "url" && r.BGM.Source != "preset" && r.BGM.Source != "none" {
+		return fmt.Errorf("bgm.source must be upload, url, preset or none")
+	}
+	if r.BGM.Source != "none" && r.BGM.Path == "" {
+		return fmt.Errorf("bgm.path is required when source is not none")
+	}
 	if r.BGM.Volume == 0 {
 		r.BGM.Volume = 0.25
 	}
@@ -108,6 +121,12 @@ func (r *JobCreateRequest) Validate() error {
 	}
 	if r.SubtitleStyle.MaxLineWidth == 0 {
 		r.SubtitleStyle.MaxLineWidth = 16
+	}
+	if r.SubtitleStyle.OutlineWidth == 0 {
+		r.SubtitleStyle.OutlineWidth = 0.1
+	}
+	if r.SubtitleStyle.OutlineColor == "" {
+		r.SubtitleStyle.OutlineColor = "000000"
 	}
 	return nil
 }

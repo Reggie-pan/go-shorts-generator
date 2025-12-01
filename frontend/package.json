@@ -1,5 +1,5 @@
 {
-  "name": "video-smith-frontend",
+  "name": "goshortsgenerator-frontend",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.1.0",
+    "sass": "^1.94.2",
     "vite": "^4.5.0"
   }
 }

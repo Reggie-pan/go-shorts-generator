@@ -1,0 +1,11 @@
+/* Section Container */
+.section-container {
+  margin-bottom: var(--spacing-xl);
+}
+
+.material-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}

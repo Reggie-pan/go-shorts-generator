@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"video-smith/backend/internal/service/job"
+
+	"github.com/Reggie-pan/go-shorts-generator/internal/service/job"
 )
 
 func TestVideoFilterConstruction(t *testing.T) {

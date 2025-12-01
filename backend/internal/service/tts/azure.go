@@ -2,6 +2,7 @@ package tts
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,10 +11,10 @@ import (
 	"strconv"
 	"time"
 
-	"video-smith/backend/internal/utils"
+	"github.com/Reggie-pan/go-shorts-generator/internal/utils"
 )
 
-// AzureProvider 透過 Azure 語音 REST API（v1/v2 共用）。
+// AzureProvider 實作 Azure 語音 REST API（v1/v2 通用）
 type AzureProvider struct {
 	Key    string
 	Region string
@@ -21,7 +22,7 @@ type AzureProvider struct {
 
 func (a *AzureProvider) Synthesize(text, voice, locale string, speed, pitch float64) (string, float64, error) {
 	if a.Key == "" || a.Region == "" {
-		return (&EspeakProvider{}).Synthesize(text, voice, locale, speed, pitch)
+		return "", 0, fmt.Errorf("Azure TTS key or region is missing")
 	}
 	if voice == "" {
 		voice = locale + "-AriaNeural"
@@ -55,6 +56,58 @@ func (a *AzureProvider) Synthesize(text, voice, locale string, speed, pitch floa
 	if _, err := io.Copy(f, resp.Body); err != nil {
 		return "", 0, err
 	}
+
+	info, _ := f.Stat()
+	if info.Size() < 100 {
+		// 檔案太小，可能是空檔或只有檔頭
+		content, _ := os.ReadFile(tmp)
+		return "", 0, fmt.Errorf("Azure TTS 回傳檔案太小 (%d bytes), 內容: %s", info.Size(), string(content))
+	}
+
 	dur, _ := utils.AudioDurationSeconds(tmp)
 	return tmp, dur, nil
+}
+
+func (a *AzureProvider) ListVoices() ([]Voice, error) {
+	if a.Key == "" || a.Region == "" {
+		return nil, fmt.Errorf("Azure TTS key or region is missing")
+	}
+	url := fmt.Sprintf("https://%s.tts.speech.microsoft.com/cognitiveservices/voices/list", a.Region)
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	req.Header.Set("Ocp-Apim-Subscription-Key", a.Key)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to list voices: %s", resp.Status)
+	}
+
+	// Azure 返回 JSON 結構
+	type azureVoice struct {
+		ShortName   string `json:"ShortName"`
+		DisplayName string `json:"DisplayName"` // 這裡其實是 LocalName + (Description)
+		LocalName   string `json:"LocalName"`
+		Locale      string `json:"Locale"`
+		Gender      string `json:"Gender"`
+	}
+	var raw []azureVoice
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+
+	var voices []Voice
+	for _, v := range raw {
+		voices = append(voices, Voice{
+			Name:        v.ShortName,
+			DisplayName: fmt.Sprintf("%s (%s, %s)", v.LocalName, v.Locale, v.Gender),
+			Locale:      v.Locale,
+			Gender:      v.Gender,
+		})
+	}
+	return voices, nil
 }
