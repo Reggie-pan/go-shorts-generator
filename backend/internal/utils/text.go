@@ -23,7 +23,8 @@ func SplitScript(script string, maxLen int) []string {
 	if clean == "" {
 		return []string{}
 	}
-	delims := regexp.MustCompile(`[，。？！]`)
+	// 擴充分隔符號：包含頓號、分號
+	delims := regexp.MustCompile(`[，。？！、；]`)
 	parts := delims.Split(clean, -1)
 	res := make([]string, 0, len(parts))
 	for _, p := range parts {
@@ -31,6 +32,7 @@ func SplitScript(script string, maxLen int) []string {
 		if p == "" {
 			continue
 		}
+		// 如果片段過長，需要強制切分
 		for utf8.RuneCountInString(p) > maxLen {
 			runes := []rune(p)
 			res = append(res, strings.TrimSpace(string(runes[:maxLen])))
@@ -40,7 +42,27 @@ func SplitScript(script string, maxLen int) []string {
 			res = append(res, p)
 		}
 	}
-	return res
+
+	// 智能合併：如果連續兩個片段總長度 <= maxLen，則合併
+	merged := make([]string, 0, len(res))
+	i := 0
+	for i < len(res) {
+		current := res[i]
+		// 嘗試與下一個片段合併
+		if i+1 < len(res) {
+			next := res[i+1]
+			combined := current + next
+			if utf8.RuneCountInString(combined) <= maxLen {
+				merged = append(merged, combined)
+				i += 2 // 跳過已合併的兩個片段
+				continue
+			}
+		}
+		merged = append(merged, current)
+		i++
+	}
+
+	return merged
 }
 
 type SubtitleSegment struct {
