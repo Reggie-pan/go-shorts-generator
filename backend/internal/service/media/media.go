@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Reggie-pan/go-shorts-generator/internal/service/job"
 	"github.com/Reggie-pan/go-shorts-generator/internal/utils"
@@ -445,7 +446,15 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 	for _, seg := range segments {
 		start := formatASSTime(seg.Start)
 		end := formatASSTime(seg.End)
-		text := strings.ReplaceAll(seg.Text, "\n", "\\N")
+
+		// 自動換行邏輯：如果文本超過 max_line_width，插入 \N 換行符
+		text := seg.Text
+		if style.MaxLineWidth > 0 {
+			text = wrapText(text, style.MaxLineWidth)
+		}
+
+		// 替換換行符為 ASS 格式
+		text = strings.ReplaceAll(text, "\n", "\\N")
 		b.WriteString(fmt.Sprintf("Dialogue: 0,%s,%s,Default,%s\n", start, end, text))
 	}
 
@@ -457,6 +466,54 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 		return "", style, err
 	}
 	return path, style, nil
+}
+
+// wrapText 將文本按照最大寬度自動換行
+func wrapText(text string, maxWidth int) string {
+	runes := []rune(text)
+	if utf8.RuneCountInString(text) <= maxWidth {
+		return text
+	}
+
+	var lines []string
+	var currentLine []rune
+
+	for i := 0; i < len(runes); {
+		// 嘗試取出 maxWidth 個字符
+		remaining := len(runes) - i
+		chunkSize := maxWidth
+		if remaining < chunkSize {
+			chunkSize = remaining
+		}
+
+		chunk := runes[i : i+chunkSize]
+
+		// 如果這是最後一塊，直接加入
+		if i+chunkSize >= len(runes) {
+			currentLine = append(currentLine, chunk...)
+			lines = append(lines, string(currentLine))
+			break
+		}
+
+		// 檢查是否可以在更好的位置切分（空格、標點等）
+		// 向後查找最多 5 個字符，找空格或標點
+		bestSplit := chunkSize
+		for j := chunkSize; j > chunkSize-5 && j > 0; j-- {
+			char := runes[i+j-1]
+			// 中文標點或空格
+			if char == ' ' || char == '，' || char == '。' || char == '！' || char == '？' || char == '；' || char == '、' {
+				bestSplit = j
+				break
+			}
+		}
+
+		currentLine = append(currentLine, runes[i:i+bestSplit]...)
+		lines = append(lines, string(currentLine))
+		currentLine = []rune{}
+		i += bestSplit
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 func formatASSTime(ms int) string {

@@ -40,22 +40,23 @@ Constraints:
 2. Separator: Use "|||" to separate distinct time-based segments.
 3. No Line Breaks: Do NOT use "\n" or any other line break characters within a segment.
 4. Remove Punctuation: REMOVE punctuation marks (e.g., ，。？！「」?!), BUT PRESERVE decimal points in numbers (e.g. 3.14) and percentage signs (%%). The output should contain ONLY text and numbers.
-5. Merge Aggressively: Ignore original punctuation for segmentation. If multiple short phrases fit within the max character limit, MERGE them into a single line. Do NOT split just because there was a comma in the original text.
-6. Output Format: Pure text with separators. No markdown, no explanations.
+5. Semantic Integrity: Each segment MUST form a complete semantic unit. DO NOT break in the middle of subject-verb-object structures or split phrases that belong together semantically. For Chinese text, keep related clauses together (e.g., "主語+動詞+受語" should stay in one segment if possible).
+6. Semantic First, Length Second: Prioritize semantic completeness over filling to max length. It's better to have a slightly shorter segment than to force-merge unrelated phrases. Only merge phrases if they are semantically connected.
+7. Output Format: Pure text with separators. No markdown, no explanations.
 
 Examples:
 
 Input:
-甚至有網友說台灣人對Threads的熱愛已經發展出一套獨特的社群文化，台灣人用Threads已經到了像廁所求救、沒衛生紙、便當沒筷子都會有人送去的程度。(Max: 16)
+今天天氣真好，我們去公園野餐吧！記得帶上你最喜歡的三明治和水果。我會準備一些飲料和甜點。到時候我們可以在湖邊找個舒服的地方坐下來，享受美好的午後時光。你覺得這個計畫怎麼樣？(Max: 16)
 
 Output:
-甚至有網友說台灣人對Threads的熱愛|||已經發展出一套獨特的社群文化|||台灣人用Threads已經到了像廁所求救|||沒衛生紙便當沒筷子都會有人送去的程度
+今天天氣真好我們去公園野餐吧|||記得帶上你最喜歡的三明治和水果|||我會準備一些飲料和甜點|||到時候我們可以在湖邊|||找個舒服的地方坐下來|||享受美好的午後時光|||你覺得這個計畫怎麼樣
 
 Input:
 Welcome to the video. Today, we are going to talk about artificial intelligence. (Max: 50)
 
 Output:
-Welcome to the video Today we are going to talk about artificial intelligence
+Welcome to the video|||Today we are going to talk about artificial intelligence
 
 Text to Segment:
 %s
