@@ -34,7 +34,6 @@ RUN apt-get update && apt-get install -y \
 ENV PORT=8080
 ENV STORAGE_PATH=/data
 ENV BGM_PATH=/assets/bgm
-ENV GOOGLE_TTS_KEY=
 ENV AZURE_TTS_KEY=
 ENV AZURE_TTS_REGION=
 ENV GEMINI_API_KEY=
