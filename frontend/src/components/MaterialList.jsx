@@ -1,10 +1,10 @@
 import React from 'react'
 import MaterialItem from './MaterialItem'
 
-const MaterialList = ({ materials, onUpdate, onAdd, onRemove, onMove }) => {
+const MaterialList = ({ materials, onUpdate, onAdd, onRemove, onMove, t }) => {
   return (
     <div className="section-container">
-      <h3><i className="fas fa-images"></i> 素材設定</h3>
+      <h3><i className="fas fa-images"></i> {t('materialSettings')}</h3>
       <div className="material-list">
         {materials.map((m, idx) => (
           <MaterialItem 
@@ -15,11 +15,12 @@ const MaterialList = ({ materials, onUpdate, onAdd, onRemove, onMove }) => {
             onUpdate={onUpdate} 
             onRemove={onRemove}
             onMove={onMove}
+            t={t}
           />
         ))}
       </div>
       <button className="btn btn-primary btn-block" onClick={onAdd}>
-        <i className="fas fa-plus"></i> 新增素材
+        <i className="fas fa-plus"></i> {t('addMaterial')}
       </button>
     </div>
   )
