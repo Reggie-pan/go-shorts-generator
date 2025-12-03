@@ -9,7 +9,6 @@ services:
       - STORAGE_PATH=/data
       - BGM_PATH=/assets/bgm
       - TZ=Asia/Taipei
-      - GOOGLE_TTS_KEY=
       - AZURE_TTS_KEY=
       - AZURE_TTS_REGION=
       - GEMINI_API_KEY=

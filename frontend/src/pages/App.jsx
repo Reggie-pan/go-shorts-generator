@@ -29,6 +29,12 @@ export default function App() {
   // Toast Notification System
   const [toasts, setToasts] = useState([])
 
+  // Custom Confirm Dialog
+  const [confirmModal, setConfirmModal] = useState({ show: false, message: '', onConfirm: null })
+
+  // About Modal
+  const [showAboutModal, setShowAboutModal] = useState(false)
+
   const addToast = (type, message) => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, type, message }])
@@ -36,9 +42,6 @@ export default function App() {
       setToasts(prev => prev.filter(t => t.id !== id))
     }, 3000)
   }
-
-  // Custom Confirm Dialog
-  const [confirmModal, setConfirmModal] = useState({ show: false, message: '', onConfirm: null })
 
   const toggleBgm = (filename) => {
     if (!filename) return
@@ -250,6 +253,8 @@ export default function App() {
     }
   }
 
+
+
   return (
     <div className="container">
       <ToastContainer toasts={toasts} />
@@ -262,14 +267,59 @@ export default function App() {
         }}
         onCancel={() => setConfirmModal({ ...confirmModal, show: false })}
       />
-      <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, background: 'linear-gradient(135deg, #fff 0%, #a5b4fc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-        <i className="fas fa-video" style={{ marginRight: '10px', color: '#a5b4fc' }}></i>
-        GoShortsGenerator
-      </h1>
-      <div style={{ marginBottom: 24 }}>
-        <a href="/swagger.html" target="_blank" rel="noreferrer" className="api-docs-link">
-          <i className="fas fa-file-code"></i> 查看 API 文件
-        </a>
+      
+      {/* About Modal */}
+      {showAboutModal && (
+        <div className="modal-overlay" onClick={() => setShowAboutModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3><i className="fas fa-info-circle" style={{ marginRight: '8px' }}></i> 關於 (About)</h3>
+              <button className="close-btn" onClick={() => setShowAboutModal(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: '#fff' }}>回報問題 (Report a bug)</h4>
+                <a href="https://github.com/reggie-pan/go-shorts-generator/issues" target="_blank" rel="noreferrer">
+                  https://github.com/reggie-pan/go-shorts-generator/issues
+                </a>
+              </div>
+              <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '16px 0' }} />
+              <div>
+                <h4 style={{ margin: '0 0 8px 0', color: '#fff' }}>GoShortsGenerator</h4>
+                <p>
+                  一個自動化影片生成平台，專為快速製作短影音 (Shorts) 而設計。透過整合先進的 AI 語言模型與語音合成技術，使用者僅需提供腳本與素材，系統即可自動完成斷句、配音、字幕生成與影片合成，大幅縮短內容創作週期。
+                </p>
+                <p>
+                  Simply provide a script and materials, and it will automatically generate the video copy, video materials, video subtitles, and video background music before synthesizing a high-definition short video.
+                </p>
+                <a href="https://github.com/reggie-pan/go-shorts-generator" target="_blank" rel="noreferrer">
+                  https://github.com/reggie-pan/go-shorts-generator
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, background: 'linear-gradient(135deg, #fff 0%, #a5b4fc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <i className="fas fa-video" style={{ marginRight: '10px', color: '#a5b4fc' }}></i>
+            GoShortsGenerator
+          </h1>
+          <div style={{ marginBottom: 24, marginTop: 8 }}>
+            <a href="/swagger.html" target="_blank" rel="noreferrer" className="api-docs-link">
+              <i className="fas fa-file-code"></i> 查看 API 文件
+            </a>
+            <button 
+              onClick={() => setShowAboutModal(true)} 
+              className="api-docs-link" 
+              style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '16px', fontSize: '0.9rem' }}
+            >
+              <i className="fas fa-info-circle"></i> 關於
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="card">
@@ -800,6 +850,81 @@ export default function App() {
           border-width: 5px;
           border-style: solid;
           border-color: #ef4444 transparent transparent transparent;
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          backdrop-filter: blur(4px);
+          animation: fadeIn 0.2s ease;
+        }
+        .modal-content {
+          background: #1e293b;
+          padding: 24px;
+          border-radius: 12px;
+          width: 90%;
+          max-width: 500px;
+          position: relative;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          animation: scaleIn 0.2s ease;
+        }
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+        }
+        .modal-header h3 {
+          margin: 0;
+          font-size: 1.25rem;
+          color: #fff;
+          display: flex;
+          align-items: center;
+        }
+        .close-btn {
+          background: none;
+          border: none;
+          color: #94a3b8;
+          font-size: 1.5rem;
+          cursor: pointer;
+          padding: 0;
+          line-height: 1;
+          transition: color 0.2s;
+        }
+        .close-btn:hover {
+          color: #fff;
+        }
+        .modal-body p {
+          color: #cbd5e1;
+          line-height: 1.6;
+          margin-bottom: 12px;
+        }
+        .modal-body a {
+          color: #60a5fa;
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .modal-body a:hover {
+          color: #93c5fd;
+          text-decoration: underline;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
         }
       `}</style>
     </div>
