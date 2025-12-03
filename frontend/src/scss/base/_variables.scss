@@ -1,53 +1,63 @@
 :root {
-  /* 色彩系統 */
-  --color-primary: #0ea5e9;
-  --color-primary-light: #38bdf8;
-  --color-primary-dark: #0284c7;
-  --color-secondary: #10b981;
-  --color-accent: #a855f7;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
+  /* 現代科技感色彩系統 */
+  --color-primary: #0ea5e9; /* Sky 500 */
+  --color-primary-light: #38bdf8; /* Sky 400 */
+  --color-primary-dark: #0284c7; /* Sky 600 */
+  --color-secondary: #10b981; /* Emerald 500 */
+  --color-accent: #8b5cf6; /* Violet 500 */
+  --color-danger: #ef4444; /* Red 500 */
+  --color-warning: #f59e0b; /* Amber 500 */
 
-  /* 背景色 */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-card: rgba(17, 24, 39, 0.7);
-  --bg-card-hover: rgba(30, 41, 59, 0.8);
-  --bg-input: #0b1223;
+  /* 深邃背景色 */
+  --bg-primary: #020617; /* Slate 950 - 更深邃 */
+  --bg-secondary: #0f172a; /* Slate 900 */
+  --bg-deep: #000000; /* 純黑用於層次 */
+
+  /* Glassmorphism 背景 */
+  --bg-card: rgba(15, 23, 42, 0.6);
+  --bg-card-hover: rgba(30, 41, 59, 0.7);
+  --bg-input: rgba(2, 6, 23, 0.5);
+  --bg-overlay: rgba(0, 0, 0, 0.85);
 
   /* 文字色 */
-  --text-primary: #e2e8f0;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  --text-primary: #f8fafc; /* Slate 50 */
+  --text-secondary: #94a3b8; /* Slate 400 */
+  --text-muted: #64748b; /* Slate 500 */
+  --text-highlight: #38bdf8;
 
-  /* 邊框色 */
-  --border-primary: #334155;
-  --border-secondary: #1f2937;
-  --border-glow: rgba(14, 165, 233, 0.3);
+  /* 邊框與光暈 */
+  --border-primary: rgba(148, 163, 184, 0.1);
+  --border-secondary: rgba(148, 163, 184, 0.05);
+  --border-glow: rgba(56, 189, 248, 0.3);
+  --border-glow-hover: rgba(56, 189, 248, 0.6);
+  --border-focus: rgba(56, 189, 248, 0.8);
 
   /* 間距 */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 24px;
-  --spacing-2xl: 32px;
+  --spacing-md: 16px; /* 增加間距以提升呼吸感 */
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
 
-  /* 圓角 */
+  /* 圓角 - 現代微圓角或全圓角 */
   --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
 
-  /* 陰影 */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.15);
+  /* 陰影與發光 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 15px rgba(14, 165, 233, 0.15);
+  --shadow-glow-strong: 0 0 25px rgba(14, 165, 233, 0.3);
 
   /* 過渡 */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }

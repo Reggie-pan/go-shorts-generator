@@ -123,6 +123,18 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      const x = e.clientX
+      const y = e.clientY
+      document.documentElement.style.setProperty('--cursor-x', `${x}px`)
+      document.documentElement.style.setProperty('--cursor-y', `${y}px`)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [])
+
   // Fetch voices when provider changes
   useEffect(() => {
     const fetchVoices = async () => {
@@ -279,8 +291,8 @@ export default function App() {
             <div className="modal-body">
               <div style={{ marginBottom: '16px' }}>
                 <h4 style={{ margin: '0 0 8px 0', color: '#fff' }}>回報問題 (Report a bug)</h4>
-                <a href="https://github.com/reggie-pan/go-shorts-generator/issues" target="_blank" rel="noreferrer">
-                  https://github.com/reggie-pan/go-shorts-generator/issues
+                <a href="https://github.com/reggie-pan/go-shorts-generator/issues" target="_blank" rel="noreferrer" className="about-link">
+                  <i className="fab fa-github"></i> GitHub Issues
                 </a>
               </div>
               <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '16px 0' }} />
@@ -289,11 +301,8 @@ export default function App() {
                 <p>
                   一個自動化影片生成平台，專為快速製作短影音 (Shorts) 而設計。透過整合先進的 AI 語言模型與語音合成技術，使用者僅需提供腳本與素材，系統即可自動完成斷句、配音、字幕生成與影片合成，大幅縮短內容創作週期。
                 </p>
-                <p>
-                  Simply provide a script and materials, and it will automatically generate the video copy, video materials, video subtitles, and video background music before synthesizing a high-definition short video.
-                </p>
-                <a href="https://github.com/reggie-pan/go-shorts-generator" target="_blank" rel="noreferrer">
-                  https://github.com/reggie-pan/go-shorts-generator
+                <a href="https://github.com/reggie-pan/go-shorts-generator" target="_blank" rel="noreferrer" className="about-link">
+                  <i className="fab fa-github"></i> Project Repository
                 </a>
               </div>
             </div>
@@ -301,24 +310,21 @@ export default function App() {
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, background: 'linear-gradient(135deg, #fff 0%, #a5b4fc 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            <i className="fas fa-video" style={{ marginRight: '10px', color: '#a5b4fc' }}></i>
-            GoShortsGenerator
-          </h1>
-          <div style={{ marginBottom: 24, marginTop: 8 }}>
-            <a href="/swagger.html" target="_blank" rel="noreferrer" className="api-docs-link">
-              <i className="fas fa-file-code"></i> 查看 API 文件
-            </a>
-            <button 
-              onClick={() => setShowAboutModal(true)} 
-              className="api-docs-link" 
-              style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: '16px', fontSize: '0.9rem' }}
-            >
-              <i className="fas fa-info-circle"></i> 關於
-            </button>
-          </div>
+      <div className="app-header">
+        <h1 className="header-title">
+          <i className="fas fa-video"></i>
+          GoShortsGenerator
+        </h1>
+        <div className="header-actions">
+          <a href="/swagger.html" target="_blank" rel="noreferrer" className="btn-text">
+            <i className="fas fa-file-code"></i> API 文件
+          </a>
+          <button 
+            onClick={() => setShowAboutModal(true)} 
+            className="btn-text" 
+          >
+            <i className="fas fa-info-circle"></i> 關於
+          </button>
         </div>
       </div>
 
@@ -349,13 +355,7 @@ export default function App() {
             <input 
               value={form.tts.locale} 
               disabled
-              style={{ 
-                opacity: 0.7, 
-                cursor: 'not-allowed', 
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                color: 'var(--text-muted)',
-                border: '1px solid var(--border-primary)'
-              }} 
+              className="input-disabled"
             />
           </div>
           <div>
@@ -421,27 +421,19 @@ export default function App() {
           </div>
           <div>
             <label><i className="fas fa-palette"></i> 背景顏色</label>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: '6px' }}>
-              <div style={{ position: 'relative' }}>
+            <div className="color-picker-group">
+              <div className="color-preview-wrapper">
                 <input 
                   type="color" 
                   value={`#${form.video.background || '000000'}`} 
                   onChange={(e) => setForm({ ...form, video: { ...form.video, background: e.target.value.replace('#', '').toUpperCase() } })} 
                   disabled={form.video.blur_background}
-                  style={{ 
-                    width: 50, 
-                    height: 50, 
-                    border: '2px solid var(--border-primary)',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: form.video.blur_background ? 'not-allowed' : 'pointer',
-                    opacity: form.video.blur_background ? 0.5 : 1,
-                    transition: 'all var(--transition-base)'
-                  }}
+                  className="color-input"
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>#</span>
+              <div className="hex-input-wrapper">
+                <div className="hex-input-group">
+                  <span>#</span>
                   <input 
                     type="text" 
                     value={form.video.background || '000000'} 
@@ -449,25 +441,17 @@ export default function App() {
                     disabled={form.video.blur_background}
                     placeholder="000000"
                     maxLength="6"
-                    style={{ 
-                      flex: 1, 
-                      textTransform: 'uppercase', 
-                      fontFamily: 'monospace', 
-                      letterSpacing: '0.05em',
-                      opacity: form.video.blur_background ? 0.5 : 1,
-                      cursor: form.video.blur_background ? 'not-allowed' : 'text'
-                    }}
+                    className="hex-input"
                   />
                 </div>
               </div>
             </div>
             <div style={{ marginTop: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem' }}>
+              <label className="checkbox-label">
                 <input 
                   type="checkbox" 
                   checked={form.video.blur_background || false} 
                   onChange={(e) => setForm({ ...form, video: { ...form.video, blur_background: e.target.checked } })} 
-                  style={{ marginRight: '8px', width: 'auto' }}
                 />
                 模糊背景邊緣 (Blur Edge)
               </label>
@@ -494,61 +478,58 @@ export default function App() {
           )}
         </div>
         {form.bgm.source !== 'none' && (
-          <div style={{ marginTop: '12px' }}>
-            <label>檔名/網址/路徑</label>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'stretch' }}>
-              {form.bgm.source === 'preset' ? (
-                <select 
-                  value={form.bgm.path} 
-                  onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, path: e.target.value } })}
-                  style={{ flex: 1, marginTop: 0 }}
-                >
-                  {['random', form.bgm.path, ...bgmList].filter((v, i, arr) => v && arr.indexOf(v) === i).map((name) => (
-                    <option key={name} value={name}>{name === 'random' ? '隨機 (Random)' : name}</option>
-                  ))}
-                </select>
-              ) : (
-                <input 
-                  value={form.bgm.path} 
-                  onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, path: e.target.value } })} 
-                  style={{ flex: 1, marginTop: 0 }}
-                  placeholder={form.bgm.source === 'upload' ? "請上傳檔案..." : "請輸入網址..."}
-                />
-              )}
-
-              {form.bgm.source === 'preset' && form.bgm.path && (
-                <button 
-                  className="btn-secondary"
-                  onClick={() => toggleBgm(form.bgm.path)}
-                  style={{ padding: '0 16px', minWidth: '48px' }}
-                  title={bgmPlaying ? "停止試聽" : "試聽音樂"}
-                >
-                  <i className={bgmPlaying ? "fas fa-stop" : "fas fa-play"}></i>
-                </button>
-              )}
-
-              {form.bgm.source === 'upload' && (
-                <label className="btn btn-secondary" style={{ margin: 0, display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
-                  <i className="fas fa-cloud-upload-alt"></i>
-                  <span style={{ marginLeft: '8px' }}>選擇檔案</span>
+            <div style={{ marginTop: '12px' }}>
+              <label>檔名/網址/路徑</label>
+              <div className="bgm-input-group">
+                {form.bgm.source === 'preset' ? (
+                  <select 
+                    value={form.bgm.path} 
+                    onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, path: e.target.value } })}
+                  >
+                    {['random', form.bgm.path, ...bgmList].filter((v, i, arr) => v && arr.indexOf(v) === i).map((name) => (
+                      <option key={name} value={name}>{name === 'random' ? '隨機 (Random)' : name}</option>
+                    ))}
+                  </select>
+                ) : (
                   <input 
-                    type="file" 
-                    style={{ display: 'none' }} 
-                    onChange={async (e) => {
-                      if (e.target.files[0]) {
-                        try {
-                          const res = await api.uploadFile(e.target.files[0])
-                          setForm({ ...form, bgm: { ...form.bgm, path: res.path } })
-                        } catch (err) {
-                          alert('上傳失敗')
-                        }
-                      }
-                    }} 
+                    value={form.bgm.path} 
+                    onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, path: e.target.value } })} 
+                    placeholder={form.bgm.source === 'upload' ? "請上傳檔案..." : "請輸入網址..."}
                   />
-                </label>
-              )}
+                )}
+
+                {form.bgm.source === 'preset' && form.bgm.path && (
+                  <button 
+                    className="btn-secondary btn-play"
+                    onClick={() => toggleBgm(form.bgm.path)}
+                    title={bgmPlaying ? "停止試聽" : "試聽音樂"}
+                  >
+                    <i className={bgmPlaying ? "fas fa-stop" : "fas fa-play"}></i>
+                  </button>
+                )}
+
+                {form.bgm.source === 'upload' && (
+                  <label className="btn btn-secondary btn-file-select">
+                    <i className="fas fa-cloud-upload-alt"></i>
+                    <span>選擇檔案</span>
+                    <input 
+                      type="file" 
+                      style={{ display: 'none' }} 
+                      onChange={async (e) => {
+                        if (e.target.files[0]) {
+                          try {
+                            const res = await api.uploadFile(e.target.files[0])
+                            setForm({ ...form, bgm: { ...form.bgm, path: res.path } })
+                          } catch (err) {
+                            alert('上傳失敗')
+                          }
+                        }
+                      }} 
+                    />
+                  </label>
+                )}
+              </div>
             </div>
-          </div>
         )}
 
         <h3><i className="fas fa-closed-captioning"></i> 字幕樣式</h3>
@@ -575,32 +556,25 @@ export default function App() {
           </div>
           <div>
             <label><i className="fas fa-palette"></i> 顏色</label>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: '6px' }}>
-              <div style={{ position: 'relative' }}>
+            <div className="color-picker-group">
+              <div className="color-preview-wrapper">
                 <input 
                   type="color" 
                   value={`#${form.subtitle_style.color || 'FFFFFF'}`} 
                   onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
-                  style={{ 
-                    width: 50, 
-                    height: 50, 
-                    border: '2px solid var(--border-primary)',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-base)'
-                  }}
+                  className="color-input"
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>#</span>
+              <div className="hex-input-wrapper">
+                <div className="hex-input-group">
+                  <span>#</span>
                   <input 
                     type="text" 
                     value={form.subtitle_style.color || 'FFFFFF'} 
                     onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
                     placeholder="FFFFFF"
                     maxLength="6"
-                    style={{ flex: 1, textTransform: 'uppercase', fontFamily: 'monospace', letterSpacing: '0.05em' }}
+                    className="hex-input"
                   />
                 </div>
               </div>
@@ -616,56 +590,41 @@ export default function App() {
           </div>
           <div>
             <label><i className="fas fa-palette"></i> 邊框顏色</label>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: '6px' }}>
-              <div style={{ position: 'relative' }}>
+            <div className="color-picker-group">
+              <div className="color-preview-wrapper">
                 <input 
                   type="color" 
                   value={`#${form.subtitle_style.outline_color || '000000'}`} 
                   onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, outline_color: e.target.value.replace('#', '').toUpperCase() } })} 
-                  style={{ 
-                    width: 50, 
-                    height: 50, 
-                    border: '2px solid var(--border-primary)',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    transition: 'all var(--transition-base)'
-                  }}
+                  className="color-input"
                 />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>#</span>
+              <div className="hex-input-wrapper">
+                <div className="hex-input-group">
+                  <span>#</span>
                   <input 
                     type="text" 
                     value={form.subtitle_style.outline_color || '000000'} 
                     onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, outline_color: e.target.value.replace('#', '').toUpperCase() } })} 
                     placeholder="000000"
                     maxLength="6"
-                    style={{ flex: 1, textTransform: 'uppercase', fontFamily: 'monospace', letterSpacing: '0.05em' }}
+                    className="hex-input"
                   />
                 </div>
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-            <label>&nbsp;</label>
-            <button 
-              className="btn-secondary" 
-              onClick={generatePreview} 
-              disabled={previewLoading}
-              style={{ 
-                width: '100%', 
-                height: '50px',
-                fontSize: '0.9rem', 
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-            >
-              {previewLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync"></i>} 產生預覽
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <label style={{ visibility: 'hidden' }}>Placeholder</label>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+              <button 
+                className="btn-secondary btn-preview" 
+                onClick={generatePreview} 
+                disabled={previewLoading}
+              >
+                {previewLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync"></i>} 產生預覽
+              </button>
+            </div>
           </div>
         </div>
 
@@ -674,26 +633,17 @@ export default function App() {
             <div className="preview-label">
               <i className="fas fa-eye"></i> 字幕預覽
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '20px', background: '#0d1117' }}>
+            <div className="preview-image-container">
               <div 
+                className="preview-image-wrapper"
                 style={{ 
-                  position: 'relative',
-                  width: '100%',
-                  maxWidth: '400px',
                   aspectRatio: (() => {
                     const [w, h] = form.video.resolution.split('x').map(Number)
                     return `${w}/${h}`
-                  })(),
-                  border: '1px dashed var(--border-primary)',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: '#000'
+                  })()
                 }}
               >
-                <img src={previewImage} alt="Subtitle Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <img src={previewImage} alt="Subtitle Preview" />
               </div>
             </div>
           </div>
@@ -703,16 +653,7 @@ export default function App() {
           <button 
             onClick={submit} 
             disabled={!isFormValid()}
-            style={{
-              opacity: isFormValid() ? 1 : 0.5,
-              cursor: isFormValid() ? 'pointer' : 'not-allowed',
-              width: '100%',
-              padding: '16px',
-              fontSize: '1.1rem',
-              fontWeight: 'bold',
-              letterSpacing: '1px',
-              boxShadow: isFormValid() ? '0 4px 12px rgba(59, 130, 246, 0.4)' : 'none'
-            }}
+            className="btn-submit"
           >
             <i className="fas fa-paper-plane" style={{ marginRight: '8px' }}></i> 
             {isFormValid() ? '建立任務' : '請填寫所有必填欄位'}
@@ -721,10 +662,10 @@ export default function App() {
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0 }}><i className="fas fa-list-check"></i> 任務列表</h2>
+        <div className="task-list-header">
+          <h2><i className="fas fa-list-check"></i> 任務列表</h2>
           {jobs.length > 0 && (
-            <button className="btn-danger" onClick={removeAll} style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
+            <button className="btn-danger btn-delete-all" onClick={removeAll}>
               <i className="fas fa-trash-alt"></i> 刪除全部
             </button>
           )}
@@ -742,27 +683,27 @@ export default function App() {
           <tbody>
             {jobs.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                  <i className="fas fa-inbox" style={{ fontSize: '3rem', marginBottom: '16px', display: 'block', opacity: 0.3 }}></i>
-                  <div style={{ fontSize: '1.125rem' }}>目前沒有任務</div>
-                  <div style={{ fontSize: '0.875rem', marginTop: '8px' }}>建立新任務後將顯示在這裡</div>
+                <td colSpan="5" className="empty-state">
+                  <i className="fas fa-inbox"></i>
+                  <div className="empty-title">目前沒有任務</div>
+                  <div className="empty-desc">建立新任務後將顯示在這裡</div>
                 </td>
               </tr>
             ) : (
               jobs.map((j) => (
                 <tr key={j.id}>
                   <td className="id-cell">{j.id}</td>
-                  <td style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <i className="fas fa-calendar-alt" style={{ marginRight: '6px', color: 'var(--color-primary)' }}></i>
+                  <td className="date-cell">
+                    <div className="date-row">
+                      <i className="fas fa-calendar-alt"></i>
                       {new Date(j.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
                     </div>
-                    <div style={{ marginLeft: '20px', fontSize: '0.75rem', opacity: 0.8 }}>
+                    <div className="time-row">
                       {new Date(j.created_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </div>
                   </td>
                   <td>
-                    <div style={{ position: 'relative', display: 'inline-block' }} className="status-container">
+                    <div className="status-container">
                       <span className={`status-badge status-${j.status}`}>
                         {j.status === 'pending' && <i className="fas fa-clock"></i>}
                         {j.status === 'running' && <i className="fas fa-spinner fa-spin"></i>}
@@ -779,27 +720,27 @@ export default function App() {
                     </div>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ flex: 1, height: '8px', background: 'var(--bg-input)', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ 
-                          width: `${j.progress}%`, 
-                          height: '100%', 
-                          background: j.status === 'success' ? 'linear-gradient(90deg, var(--color-secondary), #059669)' : 
-                                     j.status === 'failed' ? 'linear-gradient(90deg, var(--color-danger), #dc2626)' :
-                                     'linear-gradient(90deg, var(--color-primary), var(--color-primary-light))',
-                          transition: 'width 0.3s ease',
-                          borderRadius: '4px'
-                        }}></div>
+                    <div className="progress-container">
+                      <div className="progress-track">
+                        <div 
+                          className="progress-bar"
+                          style={{ 
+                            width: `${j.progress}%`, 
+                            background: j.status === 'success' ? 'linear-gradient(90deg, var(--color-secondary), #059669)' : 
+                                       j.status === 'failed' ? 'linear-gradient(90deg, var(--color-danger), #dc2626)' :
+                                       'linear-gradient(90deg, var(--color-primary), var(--color-primary-light))'
+                          }}
+                        ></div>
                       </div>
-                      <span style={{ minWidth: '45px', fontSize: '0.875rem', fontWeight: 600 }}>{j.progress}%</span>
+                      <span className="progress-text">{j.progress}%</span>
                     </div>
                   </td>
                   <td className="actions-row">
                     <button className="btn-secondary" onClick={() => handleCopyTask(j)} title="複製參數"><i className="fas fa-copy"></i></button>
                     <button className="btn-secondary" onClick={() => handleDuplicateTask(j)} title="再次執行"><i className="fas fa-redo"></i></button>
                     {!finished(j.status) && <button className="btn-secondary" onClick={() => cancel(j.id)}><i className="fas fa-stop"></i> 取消</button>}
-                    <button className="btn-danger" onClick={() => remove(j.id)}><i className="fas fa-trash"></i> 刪除</button>
-                    {j.status === 'success' && <a href={`/api/v1/jobs/${j.id}/result`} className="download-link"><i className="fas fa-download"></i> 下載</a>}
+                    <button className="btn-danger" onClick={() => remove(j.id)} title="刪除"><i className="fas fa-trash"></i></button>
+                    {j.status === 'success' && <a href={`/api/v1/jobs/${j.id}/result`} className="download-link" title="下載"><i className="fas fa-download"></i></a>}
                   </td>
                 </tr>
               ))
@@ -807,126 +748,7 @@ export default function App() {
           </tbody>
         </table>
       </div>
-      <style>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-        .status-container:hover .error-tooltip {
-          visibility: visible;
-          opacity: 1;
-          transform: translateX(-50%) translateY(0);
-        }
-        .error-tooltip {
-          visibility: hidden;
-          opacity: 0;
-          position: absolute;
-          bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%) translateY(10px);
-          background-color: #ef4444;
-          color: white;
-          padding: 8px 12px;
-          border-radius: 6px;
-          font-size: 0.8rem;
-          white-space: pre-wrap;
-          z-index: 10;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-          transition: all 0.2s ease;
-          margin-bottom: 8px;
-          min-width: 200px;
-          max-width: 400px;
-          max-height: 200px;
-          overflow-y: auto;
-          text-align: left;
-          pointer-events: auto;
-        }
-        .error-tooltip::after {
-          content: "";
-          position: absolute;
-          top: 100%;
-          left: 50%;
-          margin-left: -5px;
-          border-width: 5px;
-          border-style: solid;
-          border-color: #ef4444 transparent transparent transparent;
-        }
-        
-        /* Modal Styles */
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.7);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          backdrop-filter: blur(4px);
-          animation: fadeIn 0.2s ease;
-        }
-        .modal-content {
-          background: #1e293b;
-          padding: 24px;
-          border-radius: 12px;
-          width: 90%;
-          max-width: 500px;
-          position: relative;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          animation: scaleIn 0.2s ease;
-        }
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
-        }
-        .modal-header h3 {
-          margin: 0;
-          font-size: 1.25rem;
-          color: #fff;
-          display: flex;
-          align-items: center;
-        }
-        .close-btn {
-          background: none;
-          border: none;
-          color: #94a3b8;
-          font-size: 1.5rem;
-          cursor: pointer;
-          padding: 0;
-          line-height: 1;
-          transition: color 0.2s;
-        }
-        .close-btn:hover {
-          color: #fff;
-        }
-        .modal-body p {
-          color: #cbd5e1;
-          line-height: 1.6;
-          margin-bottom: 12px;
-        }
-        .modal-body a {
-          color: #60a5fa;
-          text-decoration: none;
-          transition: color 0.2s;
-        }
-        .modal-body a:hover {
-          color: #93c5fd;
-          text-decoration: underline;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
+
     </div>
   )
 }
