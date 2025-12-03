@@ -5,30 +5,42 @@
 body {
   margin: 0;
   font-family: 'Inter', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background-color: var(--bg-primary);
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    radial-gradient(
+      600px circle at var(--cursor-x, 50%) var(--cursor-y, 50%),
+      rgba(14, 165, 233, 0.15),
+      transparent 40%
+    );
+  background-size: 40px 40px, 40px 40px, 100% 100%;
   background-attachment: fixed;
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--spacing-xl) var(--spacing-lg);
+  position: relative;
+  z-index: 1;
 }
 
 /* 標題樣式 */
 h1 {
-  font-size: 2.5rem;
-  font-weight: 700;
+  font-size: 3rem;
+  font-weight: 800;
   margin: 0 0 var(--spacing-sm) 0;
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-accent));
+  background: linear-gradient(135deg, #fff 0%, var(--color-primary-light) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  text-shadow: 0 0 30px rgba(56, 189, 248, 0.3);
 }
 
 h2 {
@@ -39,11 +51,13 @@ h2 {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  letter-spacing: -0.01em;
 }
 
 h2 i {
   color: var(--color-primary);
   font-size: 1.25rem;
+  filter: drop-shadow(0 0 8px rgba(14, 165, 233, 0.5));
 }
 
 h3 {
@@ -55,7 +69,7 @@ h3 {
   align-items: center;
   gap: var(--spacing-sm);
   padding-bottom: var(--spacing-sm);
-  border-bottom: 2px solid var(--border-secondary);
+  border-bottom: 1px solid var(--border-primary);
 }
 
 h3 i {
@@ -65,8 +79,8 @@ h3 i {
 
 /* 滾動條樣式 */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -74,12 +88,13 @@ h3 i {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
-  border-radius: 5px;
+  background: var(--border-primary);
+  border-radius: 4px;
+  transition: background var(--transition-base);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  background: var(--text-muted);
 }
 
 /* 響應式設計基礎 */
@@ -89,7 +104,7 @@ h3 i {
   }
 
   h1 {
-    font-size: 2rem;
+    font-size: 2.25rem;
   }
 
   h2 {
