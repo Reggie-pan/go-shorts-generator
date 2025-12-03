@@ -21,8 +21,7 @@
 **GoShortsGenerator** 是一個專為快速製作短影音 (Shorts) 而設計的自動化平台。透過整合先進的 AI 語言模型與語音合成技術，使用者僅需提供腳本與素材，系統即可自動完成斷句、配音、字幕生成與影片合成，大幅縮短內容創作週期。
 
 <div align="center">
-  <img src="assets/images/ui_screenshot.png" alt="UI Screenshot" width="45%">
-  <img src="assets/images/api_screenshot.png" alt="API Screenshot" width="45%">
+  <img src="assets/images/ui_screenshot.png" alt="UI Screenshot">
 </div>
 
 ## 功能特性 🎯
@@ -118,6 +117,8 @@ docker-compose up -d --build
 本專案提供完整的 RESTful API，方便開發者進行二次開發或整合：
 
 *   **Swagger UI**: [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
+
+<img src="assets/images/api_screenshot.png" alt="API Screenshot">
 
 ## 授權條款 📝
 

@@ -17,6 +17,7 @@
   --bg-card: rgba(15, 23, 42, 0.6);
   --bg-card-hover: rgba(30, 41, 59, 0.7);
   --bg-input: rgba(2, 6, 23, 0.5);
+  --bg-input-focus: rgba(11, 18, 35, 0.9);
   --bg-overlay: rgba(0, 0, 0, 0.85);
 
   /* 文字色 */
@@ -60,4 +61,48 @@
   --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme='light'] {
+  /* 現代科技感色彩系統 - Light Mode (Modern Minimalist) */
+  --color-primary: #0ea5e9; /* Sky 500 - Vivid but not harsh */
+  --color-primary-light: #e0f2fe; /* Sky 100 - Very light for backgrounds */
+  --color-primary-dark: #0284c7; /* Sky 600 - Strong for text/icons */
+  --color-secondary: #10b981; /* Emerald 500 */
+  --color-accent: #8b5cf6; /* Violet 500 */
+  --color-danger: #ef4444; /* Red 500 */
+  --color-warning: #f59e0b; /* Amber 500 */
+
+  /* 淺色背景色 - Clean & Crisp */
+  --bg-primary: #f8fafc; /* Slate 50 - Main background */
+  --bg-secondary: #ffffff; /* White - Card background */
+  --bg-deep: #e2e8f0; /* Slate 200 - Borders/Dividers */
+
+  /* Glassmorphism 背景 - Light Mode (Subtle & Clean) */
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --bg-card-hover: rgba(255, 255, 255, 0.95);
+  --bg-input: #ffffff;
+  --bg-input-focus: #ffffff;
+  --bg-overlay: rgba(255, 255, 255, 0.9);
+
+  /* 文字色 - Light Mode (High Contrast) */
+  --text-primary: #0f172a; /* Slate 900 - Primary text */
+  --text-secondary: #475569; /* Slate 600 - Secondary text */
+  --text-muted: #94a3b8; /* Slate 400 - Muted text */
+  --text-highlight: #0ea5e9; /* Sky 500 - Highlight text */
+
+  /* 邊框與光暈 - Light Mode (Delicate) */
+  --border-primary: #e2e8f0; /* Slate 200 - Subtle border */
+  --border-secondary: #f1f5f9; /* Slate 100 - Very subtle border */
+  --border-glow: rgba(14, 165, 233, 0.15); /* Soft glow */
+  --border-glow-hover: rgba(14, 165, 233, 0.3);
+  --border-focus: rgba(14, 165, 233, 0.4);
+
+  /* 陰影 - Light Mode (Soft & Diffused) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+  --shadow-glow: 0 0 15px rgba(14, 165, 233, 0.1);
+  --shadow-glow-strong: 0 0 25px rgba(14, 165, 233, 0.2);
 }

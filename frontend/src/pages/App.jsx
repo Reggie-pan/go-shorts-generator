@@ -4,6 +4,7 @@ import MaterialList from '../components/MaterialList'
 import SearchableSelect from '../components/SearchableSelect'
 import ToastContainer from '../components/ToastContainer'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { translations } from '../utils/i18n'
 
 const blankMaterial = { type: 'image', source: 'url', path: '', duration_sec: 3 }
 const defaultRequest = {
@@ -16,7 +17,22 @@ const defaultRequest = {
 }
 
 export default function App() {
-  const [form, setForm] = useState(defaultRequest)
+  // Theme & Language & Pagination
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark')
+  const [lang, setLang] = useState(localStorage.getItem('lang') || 'zh-TW')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  // Helper for translation
+  const t = (key) => {
+    return translations[lang][key] || key
+  }
+
+  const [form, setForm] = useState({
+    ...defaultRequest,
+    script: translations[localStorage.getItem('lang') || 'zh-TW']?.defaultScript || defaultRequest.script
+  })
+
   const [jobs, setJobs] = useState([])
   const [bgmList, setBgmList] = useState([])
   const [fontList, setFontList] = useState([])
@@ -34,6 +50,36 @@ export default function App() {
 
   // About Modal
   const [showAboutModal, setShowAboutModal] = useState(false)
+
+  // Apply theme
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  // Persist lang and update script if it's default
+  useEffect(() => {
+    localStorage.setItem('lang', lang)
+    
+    // Check if current script is one of the default scripts or empty
+    const defaultScripts = Object.values(translations).map(t => t.defaultScript)
+    if (!form.script || defaultScripts.includes(form.script)) {
+      setForm(prev => ({
+        ...prev,
+        script: translations[lang].defaultScript
+      }))
+    }
+  }, [lang])
+
+  // Pagination logic
+  const totalPages = Math.ceil(jobs.length / itemsPerPage)
+  const currentJobs = jobs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
 
   const addToast = (type, message) => {
     const id = Date.now()
@@ -72,7 +118,7 @@ export default function App() {
     try {
       setPreviewLoading(true)
       // 優化：只取第一行或前 8 個字
-      let previewText = form.script ? form.script.split('\n')[0] : '預覽文字 Preview'
+      let previewText = form.script ? form.script.split('\n')[0] : t('subtitlePreview') + ' Preview'
       if (previewText.length > 8) {
         previewText = previewText.slice(0, 8)
       }
@@ -89,7 +135,7 @@ export default function App() {
       setPreviewImage(url)
     } catch (err) {
       console.error('預覽失敗', err)
-      addToast('error', '產生預覽圖失敗')
+      addToast('error', t('toastPreviewFail'))
     } finally {
       setPreviewLoading(false)
     }
@@ -171,11 +217,11 @@ export default function App() {
   const submit = async () => {
     try {
       await api.createJob(form)
-      addToast('success', '任務建立成功')
+      addToast('success', t('toastCreateSuccess'))
       setForm({ ...form }) // Don't reset script
       loadJobs()
     } catch (err) {
-      addToast('error', '建立失敗: ' + (err.response?.data?.error || err.message))
+      addToast('error', t('toastCreateFail') + (err.response?.data?.error || err.message))
     }
   }
 
@@ -192,14 +238,14 @@ export default function App() {
   const removeAll = async () => {
     setConfirmModal({
       show: true,
-      message: '確定要刪除所有任務嗎？此動作將會刪除所有任務紀錄與相關檔案，且無法復原。',
+      message: t('confirmDeleteAll'),
       onConfirm: async () => {
         try {
           await api.deleteAllJobs()
-          addToast('success', '已刪除所有任務')
+          addToast('success', t('toastDeleteAllSuccess'))
           await loadJobs()
         } catch (err) {
-          addToast('error', '刪除失敗')
+          addToast('error', t('toastDeleteFail'))
         }
       }
     })
@@ -211,7 +257,7 @@ export default function App() {
     if (!dateString) return '-'
     try {
       const date = new Date(dateString)
-      return date.toLocaleString('zh-TW', {
+      return date.toLocaleString(lang, {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -251,17 +297,17 @@ export default function App() {
     // Deep copy to avoid reference issues
     const newForm = JSON.parse(JSON.stringify(task.request))
     setForm(newForm)
-    addToast('success', '參數已複製到表單')
+    addToast('success', t('toastCopySuccess'))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleDuplicateTask = async (task) => {
     try {
       await api.createJob(task.request)
-      addToast('success', '任務已再次執行')
+      addToast('success', t('toastExecSuccess'))
       loadJobs()
     } catch (err) {
-      addToast('error', '執行失敗: ' + (err.response?.data?.error || err.message))
+      addToast('error', t('toastExecFail') + (err.response?.data?.error || err.message))
     }
   }
 
@@ -285,24 +331,24 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setShowAboutModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3><i className="fas fa-info-circle" style={{ marginRight: '8px' }}></i> 關於 (About)</h3>
+              <h3><i className="fas fa-info-circle" style={{ marginRight: '8px' }}></i> {t('aboutTitle')}</h3>
               <button className="close-btn" onClick={() => setShowAboutModal(false)}>&times;</button>
             </div>
             <div className="modal-body">
               <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: '#fff' }}>回報問題 (Report a bug)</h4>
+                <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>{t('reportBug')}</h4>
                 <a href="https://github.com/reggie-pan/go-shorts-generator/issues" target="_blank" rel="noreferrer" className="about-link">
                   <i className="fab fa-github"></i> GitHub Issues
                 </a>
               </div>
-              <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '16px 0' }} />
+              <hr style={{ borderColor: 'var(--border-primary)', margin: '16px 0' }} />
               <div>
-                <h4 style={{ margin: '0 0 8px 0', color: '#fff' }}>GoShortsGenerator</h4>
-                <p>
-                  一個自動化影片生成平台，專為快速製作短影音 (Shorts) 而設計。透過整合先進的 AI 語言模型與語音合成技術，使用者僅需提供腳本與素材，系統即可自動完成斷句、配音、字幕生成與影片合成，大幅縮短內容創作週期。
+                <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>{t('appTitle')}</h4>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  {t('aboutDesc')}
                 </p>
                 <a href="https://github.com/reggie-pan/go-shorts-generator" target="_blank" rel="noreferrer" className="about-link">
-                  <i className="fab fa-github"></i> Project Repository
+                  <i className="fab fa-github"></i> {t('projectRepo')}
                 </a>
               </div>
             </div>
@@ -316,21 +362,47 @@ export default function App() {
           GoShortsGenerator
         </h1>
         <div className="header-actions">
-          <a href="/swagger.html" target="_blank" rel="noreferrer" className="btn-text">
-            <i className="fas fa-file-code"></i> API 文件
-          </a>
-          <button 
-            onClick={() => setShowAboutModal(true)} 
-            className="btn-text" 
-          >
-            <i className="fas fa-info-circle"></i> 關於
-          </button>
+          <div className="header-group">
+            <button 
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+              className="btn-icon btn-theme-toggle"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              <i className={`fas ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
+            </button>
+            <div className="lang-select-wrapper">
+              <i className="fas fa-globe"></i>
+              <SearchableSelect 
+                options={[
+                  { label: '繁體中文', value: 'zh-TW' },
+                  { label: '简体中文', value: 'zh-CN' },
+                  { label: 'English', value: 'en' }
+                ]}
+                value={lang}
+                onChange={(val) => setLang(val)}
+                searchable={false}
+                className="header-lang-select"
+              />
+            </div>
+          </div>
+          <div className="header-divider"></div>
+          <div className="header-group">
+            <a href="/swagger.html" target="_blank" rel="noreferrer" className="btn-text">
+              <i className="fas fa-file-code"></i> <span>{t('apiDocs')}</span>
+            </a>
+            <button 
+              onClick={() => setShowAboutModal(true)} 
+              className="btn-text" 
+            >
+              <i className="fas fa-info-circle"></i> <span>{t('about')}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="card">
-        <h2><i className="fas fa-plus-circle"></i> 建立任務</h2>
-        <label><i className="fas fa-scroll"></i> 腳本</label>
+        <h2><i className="fas fa-plus-circle"></i> {t('createTask')}</h2>
+        <label><i className="fas fa-scroll"></i> {t('script')}</label>
         <textarea rows="4" value={form.script} onChange={(e) => setForm({ ...form, script: e.target.value })} />
 
         <MaterialList 
@@ -339,19 +411,25 @@ export default function App() {
           onAdd={addMaterial}
           onRemove={removeMaterial}
           onMove={moveMaterial}
+          t={t}
         />
 
-        <h3><i className="fas fa-microphone"></i> 語音合成 (TTS)</h3>
+        <h3><i className="fas fa-microphone"></i> {t('tts')}</h3>
         <div className="grid">
           <div>
-            <label>Provider</label>
-            <select value={form.tts.provider} onChange={(e) => setForm({ ...form, tts: { ...form.tts, provider: e.target.value } })}>
-              <option value="azure_v1">azure_v1</option>
-              <option value="azure_v2">azure_v2</option>
-            </select>
+            <label>{t('provider')}</label>
+            <SearchableSelect 
+              options={[
+                { label: 'azure_v1', value: 'azure_v1' },
+                { label: 'azure_v2', value: 'azure_v2' }
+              ]}
+              value={form.tts.provider}
+              onChange={(val) => setForm({ ...form, tts: { ...form.tts, provider: val } })}
+              searchable={false}
+            />
           </div>
           <div>
-            <label>Locale (自動帶入)</label>
+            <label>{t('locale')}</label>
             <input 
               value={form.tts.locale} 
               disabled
@@ -359,12 +437,12 @@ export default function App() {
             />
           </div>
           <div>
-            <label>Voice Name</label>
+            <label>{t('voiceName')}</label>
             {voiceList.length > 0 ? (
               <SearchableSelect 
                 options={voiceList.map(v => ({ label: v.name, value: v.name }))}
                 value={form.tts.voice}
-                placeholder="請選擇語音..."
+                placeholder={t('voicePlaceholder')}
                 onChange={(val) => {
                   const selectedVoice = voiceList.find(v => v.name === val)
                   setForm({ 
@@ -382,45 +460,55 @@ export default function App() {
             )}
           </div>
           <div>
-            <label>語速</label>
+            <label>{t('speed')}</label>
             <input type="number" step="0.1" value={form.tts.speed} onChange={(e) => setForm({ ...form, tts: { ...form.tts, speed: Number(e.target.value) } })} />
           </div>
           <div>
-            <label>音高</label>
+            <label>{t('pitch')}</label>
             <input type="number" step="0.1" value={form.tts.pitch} onChange={(e) => setForm({ ...form, tts: { ...form.tts, pitch: Number(e.target.value) } })} />
           </div>
         </div>
 
-        <h3><i className="fas fa-film"></i> 影片設定</h3>
+        <h3><i className="fas fa-film"></i> {t('videoSettings')}</h3>
         <div className="grid">
           <div>
-            <label>解析度</label>
-            <select value={form.video.resolution} onChange={(e) => setForm({ ...form, video: { ...form.video, resolution: e.target.value } })}>
-              <option value="1080x1920">1080x1920 (9:16)</option>
-              <option value="720x1280">720x1280 (9:16)</option>
-              <option value="1080x1080">1080x1080 (1:1)</option>
-              <option value="1920x1080">1920x1080 (16:9)</option>
-            </select>
+            <label>{t('resolution')}</label>
+            <SearchableSelect 
+              options={[
+                { label: '1080x1920 (9:16)', value: '1080x1920' },
+                { label: '720x1280 (9:16)', value: '720x1280' },
+                { label: '1080x1080 (1:1)', value: '1080x1080' },
+                { label: '1920x1080 (16:9)', value: '1920x1080' }
+              ]}
+              value={form.video.resolution}
+              onChange={(val) => setForm({ ...form, video: { ...form.video, resolution: val } })}
+              searchable={false}
+            />
           </div>
           <div>
-            <label>FPS</label>
+            <label>{t('fps')}</label>
             <input type="number" value={form.video.fps} onChange={(e) => setForm({ ...form, video: { ...form.video, fps: Number(e.target.value) } })} />
           </div>
           <div>
-            <label>轉場動畫</label>
-            <select value={form.video.transition || 'none'} onChange={(e) => setForm({ ...form, video: { ...form.video, transition: e.target.value } })}>
-              <option value="none">無</option>
-              <option value="fade">淡入淡出</option>
-              <option value="wipeleft">向左擦除</option>
-              <option value="wiperight">向右擦除</option>
-              <option value="slideleft">向左滑動</option>
-              <option value="slideright">向右滑動</option>
-              <option value="circleopen">圓形展開</option>
-              <option value="circleclose">圓形收縮</option>
-            </select>
+            <label>{t('transition')}</label>
+            <SearchableSelect 
+              options={[
+                { label: t('transitionNone'), value: 'none' },
+                { label: t('transitionFade'), value: 'fade' },
+                { label: t('transitionWipeLeft'), value: 'wipeleft' },
+                { label: t('transitionWipeRight'), value: 'wiperight' },
+                { label: t('transitionSlideLeft'), value: 'slideleft' },
+                { label: t('transitionSlideRight'), value: 'slideright' },
+                { label: t('transitionCircleOpen'), value: 'circleopen' },
+                { label: t('transitionCircleClose'), value: 'circleclose' }
+              ]}
+              value={form.video.transition || 'none'}
+              onChange={(val) => setForm({ ...form, video: { ...form.video, transition: val } })}
+              searchable={false}
+            />
           </div>
           <div>
-            <label><i className="fas fa-palette"></i> 背景顏色</label>
+            <label><i className="fas fa-palette"></i> {t('bgColor')}</label>
             <div className="color-picker-group">
               <div className="color-preview-wrapper">
                 <input 
@@ -445,56 +533,62 @@ export default function App() {
                   />
                 </div>
               </div>
-            </div>
-            <div style={{ marginTop: '8px' }}>
-              <label className="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={form.video.blur_background || false} 
-                  onChange={(e) => setForm({ ...form, video: { ...form.video, blur_background: e.target.checked } })} 
-                />
-                模糊背景邊緣 (Blur Edge)
-              </label>
+              <div className="blur-edge-wrapper">
+                <label className="checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    checked={form.video.blur_background || false} 
+                    onChange={(e) => setForm({ ...form, video: { ...form.video, blur_background: e.target.checked } })} 
+                  />
+                  {t('blurEdge')}
+                </label>
+              </div>
             </div>
           </div>
         </div>
 
-        <h3><i className="fas fa-music"></i> 背景音樂 (BGM)</h3>
+        <h3><i className="fas fa-music"></i> {t('bgm')}</h3>
         <div className="grid">
           <div>
-            <label>來源</label>
-            <select value={form.bgm.source} onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, source: e.target.value } })}>
-              <option value="preset">preset</option>
-              <option value="url">url</option>
-              <option value="upload">upload(檔案)</option>
-              <option value="none">none (無音樂)</option>
-            </select>
+            <label>{t('source')}</label>
+            <SearchableSelect 
+              options={[
+                { label: 'preset', value: 'preset' },
+                { label: 'url', value: 'url' },
+                { label: t('uploadFile'), value: 'upload' },
+                { label: t('noneMusic'), value: 'none' }
+              ]}
+              value={form.bgm.source}
+              onChange={(val) => setForm({ ...form, bgm: { ...form.bgm, source: val } })}
+              searchable={false}
+            />
           </div>
           {form.bgm.source !== 'none' && (
             <div>
-              <label>音量(0~1)</label>
+              <label>{t('volume')}</label>
               <input type="number" step="0.05" value={form.bgm.volume} onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, volume: Number(e.target.value) } })} />
             </div>
           )}
         </div>
         {form.bgm.source !== 'none' && (
             <div style={{ marginTop: '12px' }}>
-              <label>檔名/網址/路徑</label>
+              <label>{t('pathPlaceholder')}</label>
               <div className="bgm-input-group">
                 {form.bgm.source === 'preset' ? (
-                  <select 
-                    value={form.bgm.path} 
-                    onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, path: e.target.value } })}
-                  >
-                    {['random', form.bgm.path, ...bgmList].filter((v, i, arr) => v && arr.indexOf(v) === i).map((name) => (
-                      <option key={name} value={name}>{name === 'random' ? '隨機 (Random)' : name}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect 
+                    options={['random', form.bgm.path, ...bgmList]
+                      .filter((v, i, arr) => v && arr.indexOf(v) === i)
+                      .map((name) => ({ label: name === 'random' ? t('random') : name, value: name }))
+                    }
+                    value={form.bgm.path}
+                    onChange={(val) => setForm({ ...form, bgm: { ...form.bgm, path: val } })}
+                    searchable={true}
+                  />
                 ) : (
                   <input 
                     value={form.bgm.path} 
                     onChange={(e) => setForm({ ...form, bgm: { ...form.bgm, path: e.target.value } })} 
-                    placeholder={form.bgm.source === 'upload' ? "請上傳檔案..." : "請輸入網址..."}
+                    placeholder={form.bgm.source === 'upload' ? t('uploadPlaceholder') : t('urlPlaceholder')}
                   />
                 )}
 
@@ -502,7 +596,7 @@ export default function App() {
                   <button 
                     className="btn-secondary btn-play"
                     onClick={() => toggleBgm(form.bgm.path)}
-                    title={bgmPlaying ? "停止試聽" : "試聽音樂"}
+                    title={bgmPlaying ? t('stopPreview') : t('playPreview')}
                   >
                     <i className={bgmPlaying ? "fas fa-stop" : "fas fa-play"}></i>
                   </button>
@@ -511,7 +605,7 @@ export default function App() {
                 {form.bgm.source === 'upload' && (
                   <label className="btn btn-secondary btn-file-select">
                     <i className="fas fa-cloud-upload-alt"></i>
-                    <span>選擇檔案</span>
+                    <span>{t('selectFile')}</span>
                     <input 
                       type="file" 
                       style={{ display: 'none' }} 
@@ -521,7 +615,7 @@ export default function App() {
                             const res = await api.uploadFile(e.target.files[0])
                             setForm({ ...form, bgm: { ...form.bgm, path: res.path } })
                           } catch (err) {
-                            alert('上傳失敗')
+                            alert(t('uploadFail'))
                           }
                         }
                       }} 
@@ -532,30 +626,30 @@ export default function App() {
             </div>
         )}
 
-        <h3><i className="fas fa-closed-captioning"></i> 字幕樣式</h3>
+        <h3><i className="fas fa-closed-captioning"></i> {t('subtitleStyle')}</h3>
         <div className="grid">
           <div>
-            <label>字體</label>
-            <select value={form.subtitle_style.font} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, font: e.target.value } })}>
-              {fontList.length > 0 ? (
-                fontList.map((font) => (
-                  <option key={font.name} value={font.name}>{font.name}</option>
-                ))
-              ) : (
-                <option value={form.subtitle_style.font}>{form.subtitle_style.font}</option>
-              )}
-            </select>
+            <label>{t('font')}</label>
+            <SearchableSelect 
+              options={fontList.length > 0 
+                ? fontList.map((font) => ({ label: font.name, value: font.name }))
+                : [{ label: form.subtitle_style.font, value: form.subtitle_style.font }]
+              }
+              value={form.subtitle_style.font}
+              onChange={(val) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, font: val } })}
+              searchable={true}
+            />
           </div>
           <div>
-            <label>字型大小</label>
+            <label>{t('fontSize')}</label>
             <input type="number" value={form.subtitle_style.size} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, size: Number(e.target.value) } })} />
           </div>
           <div>
-            <label>Y Offset (高度)</label>
+            <label>{t('yOffset')}</label>
             <input type="number" value={form.subtitle_style.y_offset} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, y_offset: Number(e.target.value) } })} />
           </div>
           <div>
-            <label><i className="fas fa-palette"></i> 顏色</label>
+            <label><i className="fas fa-palette"></i> {t('color')}</label>
             <div className="color-picker-group">
               <div className="color-preview-wrapper">
                 <input 
@@ -581,15 +675,15 @@ export default function App() {
             </div>
           </div>
           <div>
-            <label>單行最大字數</label>
+            <label>{t('maxLineWidth')}</label>
             <input type="number" value={form.subtitle_style.max_line_width} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, max_line_width: Number(e.target.value) } })} />
           </div>
           <div>
-            <label>邊框寬度</label>
+            <label>{t('outlineWidth')}</label>
             <input type="number" step="0.1" value={form.subtitle_style.outline_width} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, outline_width: Number(e.target.value) } })} />
           </div>
           <div>
-            <label><i className="fas fa-palette"></i> 邊框顏色</label>
+            <label><i className="fas fa-palette"></i> {t('outlineColor')}</label>
             <div className="color-picker-group">
               <div className="color-preview-wrapper">
                 <input 
@@ -622,7 +716,7 @@ export default function App() {
                 onClick={generatePreview} 
                 disabled={previewLoading}
               >
-                {previewLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync"></i>} 產生預覽
+                {previewLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync"></i>} {t('preview')}
               </button>
             </div>
           </div>
@@ -631,7 +725,7 @@ export default function App() {
         {previewImage && (
           <div className="preview-box" style={{ marginTop: '20px' }}>
             <div className="preview-label">
-              <i className="fas fa-eye"></i> 字幕預覽
+              <i className="fas fa-eye"></i> {t('subtitlePreview')}
             </div>
             <div className="preview-image-container">
               <div 
@@ -656,28 +750,28 @@ export default function App() {
             className="btn-submit"
           >
             <i className="fas fa-paper-plane" style={{ marginRight: '8px' }}></i> 
-            {isFormValid() ? '建立任務' : '請填寫所有必填欄位'}
+            {isFormValid() ? t('submit') : t('fillRequired')}
           </button>
         </div>
       </div>
 
       <div className="card">
         <div className="task-list-header">
-          <h2><i className="fas fa-list-check"></i> 任務列表</h2>
+          <h2><i className="fas fa-list-check"></i> {t('taskList')}</h2>
           {jobs.length > 0 && (
             <button className="btn-danger btn-delete-all" onClick={removeAll}>
-              <i className="fas fa-trash-alt"></i> 刪除全部
+              <i className="fas fa-trash-alt"></i> {t('deleteAll')}
             </button>
           )}
         </div>
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>建立時間</th>
-              <th>狀態</th>
-              <th>進度</th>
-              <th>操作</th>
+              <th>{t('id')}</th>
+              <th>{t('createdTime')}</th>
+              <th>{t('status')}</th>
+              <th>{t('progress')}</th>
+              <th>{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -685,21 +779,35 @@ export default function App() {
               <tr>
                 <td colSpan="5" className="empty-state">
                   <i className="fas fa-inbox"></i>
-                  <div className="empty-title">目前沒有任務</div>
-                  <div className="empty-desc">建立新任務後將顯示在這裡</div>
+                  <div className="empty-title">{t('emptyStateTitle')}</div>
+                  <div className="empty-desc">{t('emptyStateDesc')}</div>
                 </td>
               </tr>
             ) : (
-              jobs.map((j) => (
+              currentJobs.map((j) => (
                 <tr key={j.id}>
-                  <td className="id-cell">{j.id}</td>
+                  <td className="id-cell">
+                    <div className="id-wrapper">
+                      <span className="id-text" title={j.id}>#{j.id.substring(0, 8)}</span>
+                      <button 
+                        className="btn-icon-sm" 
+                        onClick={() => {
+                          navigator.clipboard.writeText(j.id)
+                          addToast('success', t('toastCopyIdSuccess'))
+                        }}
+                        title={t('id')}
+                      >
+                        <i className="fas fa-copy"></i>
+                      </button>
+                    </div>
+                  </td>
                   <td className="date-cell">
                     <div className="date-row">
                       <i className="fas fa-calendar-alt"></i>
-                      {new Date(j.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                      {new Date(j.created_at).toLocaleDateString(lang, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                     </div>
                     <div className="time-row">
-                      {new Date(j.created_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      {new Date(j.created_at).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </div>
                   </td>
                   <td>
@@ -736,17 +844,40 @@ export default function App() {
                     </div>
                   </td>
                   <td className="actions-row">
-                    <button className="btn-secondary" onClick={() => handleCopyTask(j)} title="複製參數"><i className="fas fa-copy"></i></button>
-                    <button className="btn-secondary" onClick={() => handleDuplicateTask(j)} title="再次執行"><i className="fas fa-redo"></i></button>
-                    {!finished(j.status) && <button className="btn-secondary" onClick={() => cancel(j.id)}><i className="fas fa-stop"></i> 取消</button>}
-                    <button className="btn-danger" onClick={() => remove(j.id)} title="刪除"><i className="fas fa-trash"></i></button>
-                    {j.status === 'success' && <a href={`/api/v1/jobs/${j.id}/result`} className="download-link" title="下載"><i className="fas fa-download"></i></a>}
+                    <button className="btn-secondary" onClick={() => handleCopyTask(j)} title={t('copyParams')}><i className="fas fa-copy"></i></button>
+                    <button className="btn-secondary" onClick={() => handleDuplicateTask(j)} title={t('duplicateTask')}><i className="fas fa-redo"></i></button>
+                    {!finished(j.status) && <button className="btn-secondary" onClick={() => cancel(j.id)} title={t('cancel')}><i className="fas fa-stop"></i></button>}
+                    <button className="btn-danger" onClick={() => remove(j.id)} title={t('delete')}><i className="fas fa-trash"></i></button>
+                    {j.status === 'success' && <a href={`/api/v1/jobs/${j.id}/result`} className="download-link" title={t('download')}><i className="fas fa-download"></i></a>}
                   </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
+        
+        {/* Pagination Controls */}
+        {jobs.length > itemsPerPage && (
+          <div className="pagination-controls" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '16px', gap: '16px' }}>
+            <button 
+              className="btn-secondary" 
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <i className="fas fa-chevron-left"></i> {t('prevPage')}
+            </button>
+            <span style={{ color: 'var(--text-secondary)' }}>
+              {t('page')} {currentPage} / {totalPages} ({t('total')} {jobs.length} {t('items')})
+            </span>
+            <button 
+              className="btn-secondary" 
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              {t('nextPage')} <i className="fas fa-chevron-right"></i>
+            </button>
+          </div>
+        )}
       </div>
 
     </div>
