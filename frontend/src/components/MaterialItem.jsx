@@ -1,5 +1,6 @@
 import React from 'react'
 import api from '../services/api'
+import SearchableSelect from './SearchableSelect'
 
 const MaterialItem = ({ 
   material, 
@@ -7,7 +8,8 @@ const MaterialItem = ({
   total, 
   onUpdate, 
   onRemove, 
-  onMove 
+  onMove,
+  t
 }) => {
   const handleFileUpload = async (e) => {
     if (e.target.files[0]) {
@@ -25,7 +27,7 @@ const MaterialItem = ({
         const res = await api.uploadFile(file)
         onUpdate(index, 'path', res.path)
       } catch (err) {
-        alert('上傳失敗')
+        alert(t('uploadFail'))
       }
     }
   }
@@ -39,7 +41,7 @@ const MaterialItem = ({
             className="btn-icon" 
             onClick={() => onMove(index, -1)} 
             disabled={index === 0}
-            title="上移"
+            title={t('moveUp')}
           >
             <i className="fas fa-arrow-up"></i>
           </button>
@@ -47,14 +49,14 @@ const MaterialItem = ({
             className="btn-icon" 
             onClick={() => onMove(index, 1)} 
             disabled={index === total - 1}
-            title="下移"
+            title={t('moveDown')}
           >
             <i className="fas fa-arrow-down"></i>
           </button>
           <button 
             className="btn-icon btn-icon-danger" 
             onClick={() => onRemove(index)}
-            title="移除"
+            title={t('remove')}
           >
             <i className="fas fa-trash"></i>
           </button>
@@ -63,27 +65,31 @@ const MaterialItem = ({
 
       <div className="grid">
         <div className="form-group">
-          <label><i className="fas fa-layer-group"></i> 類型</label>
-          <select 
-            value={material.type} 
-            onChange={(e) => onUpdate(index, 'type', e.target.value)}
-          >
-            <option value="image">image</option>
-            <option value="video">video</option>
-          </select>
+          <label><i className="fas fa-layer-group"></i> {t('type')}</label>
+          <SearchableSelect 
+            options={[
+              { label: 'image', value: 'image' },
+              { label: 'video', value: 'video' }
+            ]}
+            value={material.type}
+            onChange={(val) => onUpdate(index, 'type', val)}
+            searchable={false}
+          />
         </div>
         <div className="form-group">
-          <label><i className="fas fa-link"></i> 來源</label>
-          <select 
-            value={material.source} 
-            onChange={(e) => onUpdate(index, 'source', e.target.value)}
-          >
-            <option value="url">url</option>
-            <option value="upload">upload(檔案)</option>
-          </select>
+          <label><i className="fas fa-link"></i> {t('source')}</label>
+          <SearchableSelect 
+            options={[
+              { label: 'url', value: 'url' },
+              { label: t('uploadFile'), value: 'upload' }
+            ]}
+            value={material.source}
+            onChange={(val) => onUpdate(index, 'source', val)}
+            searchable={false}
+          />
         </div>
         <div className="form-group">
-          <label><i className="fas fa-clock"></i> 秒數</label>
+          <label><i className="fas fa-clock"></i> {t('seconds')}</label>
           <input 
             type="number" 
             value={material.duration_sec} 
@@ -94,19 +100,19 @@ const MaterialItem = ({
 
       <div className="material-path-row">
         <div className="form-group flex-grow">
-          <label><i className="fas fa-globe"></i> 網址或路徑</label>
+          <label><i className="fas fa-globe"></i> {t('pathOrUrl')}</label>
           <div className="input-group">
             <input 
               value={material.path} 
               onChange={(e) => onUpdate(index, 'path', e.target.value)} 
               onBlur={(e) => onUpdate(index, 'path', e.target.value.trim())}
-              placeholder="請輸入網址或上傳檔案..."
+              placeholder={t('pathInputPlaceholder')}
             />
             
             {material.source === 'upload' && (
               <label className="btn btn-secondary btn-upload">
                 <i className="fas fa-cloud-upload-alt"></i>
-                <span>選擇檔案</span>
+                <span>{t('uploadFileBtn')}</span>
                 <input 
                   type="file" 
                   className="hidden-input"
@@ -119,10 +125,10 @@ const MaterialItem = ({
               <button 
                 className={`btn-toggle ${material.mute ? 'active' : ''}`}
                 onClick={() => onUpdate(index, 'mute', !material.mute)}
-                title={material.mute ? "點擊開啟聲音" : "點擊靜音"}
+                title={material.mute ? t('unmute') : t('mute')}
               >
                 <i className={material.mute ? "fas fa-volume-mute" : "fas fa-volume-up"}></i>
-                <span>{material.mute ? '已靜音' : '有聲音'}</span>
+                <span>{material.mute ? t('muted') : t('unmuted')}</span>
               </button>
             )}
           </div>
