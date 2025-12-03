@@ -52,7 +52,7 @@
 ### 1. 複製專案
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Reggie-pan/go-shorts-generator.git
 cd go-shorts-generator
 ```
 
