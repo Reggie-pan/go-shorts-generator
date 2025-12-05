@@ -496,14 +496,47 @@ func wrapText(text string, maxWidth int) string {
 		}
 
 		// 檢查是否可以在更好的位置切分（空格、標點等）
-		// 向後查找最多 5 個字符，找空格或標點
+		// 向後查找最多 8 個字符
 		bestSplit := chunkSize
-		for j := chunkSize; j > chunkSize-5 && j > 0; j-- {
+		foundPunctuation := false
+		for j := chunkSize; j > chunkSize-8 && j > 0; j-- {
 			char := runes[i+j-1]
 			// 中文標點或空格
 			if char == ' ' || char == '，' || char == '。' || char == '！' || char == '？' || char == '；' || char == '、' {
 				bestSplit = j
+				foundPunctuation = true
 				break
+			}
+		}
+
+		// 如果沒找到標點/空格，嘗試找一個"安全"的切分點 (非英數/特殊符號)
+		if !foundPunctuation {
+			for j := chunkSize; j > chunkSize-8 && j > 0; j-- {
+				idx := i + j
+				if idx >= len(runes) {
+					continue
+				}
+
+				curr := runes[idx]
+				prev := runes[idx-1]
+
+				isUnsafe := false
+				// 1. 英文/數字中間
+				isPrevAlpha := (prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') || (prev >= '0' && prev <= '9')
+				isCurrAlpha := (curr >= 'a' && curr <= 'z') || (curr >= 'A' && curr <= 'Z') || (curr >= '0' && curr <= '9')
+				if isPrevAlpha && isCurrAlpha {
+					isUnsafe = true
+				}
+
+				// 2. 特殊符號前
+				if curr == '%' || curr == '％' || curr == '℃' || curr == '°' {
+					isUnsafe = true
+				}
+
+				if !isUnsafe {
+					bestSplit = j
+					break
+				}
 			}
 		}
 
