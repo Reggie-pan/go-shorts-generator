@@ -35,8 +35,52 @@ func SplitScript(script string, maxLen int) []string {
 		// 如果片段過長，需要強制切分
 		for utf8.RuneCountInString(p) > maxLen {
 			runes := []rune(p)
-			res = append(res, strings.TrimSpace(string(runes[:maxLen])))
-			p = strings.TrimSpace(string(runes[maxLen:]))
+			splitIdx := maxLen
+
+			// 尋找最佳切分點，往回找 (最多回溯 8 個字元或一半長度)
+			limit := 8
+			if maxLen/2 < limit {
+				limit = maxLen / 2
+			}
+
+			for k := 0; k < limit; k++ {
+				idx := maxLen - k
+				if idx <= 0 || idx >= len(runes) {
+					continue
+				}
+
+				curr := runes[idx]
+				prev := runes[idx-1]
+
+				// 檢查是否為不安全切分點
+				isUnsafe := false
+
+				// 1. 英文/數字中間 (簡單判斷 ASCII)
+				isPrevAlphanumeric := (prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') || (prev >= '0' && prev <= '9')
+				isCurrAlphanumeric := (curr >= 'a' && curr <= 'z') || (curr >= 'A' && curr <= 'Z') || (curr >= '0' && curr <= '9')
+				if isPrevAlphanumeric && isCurrAlphanumeric {
+					isUnsafe = true
+				}
+
+				// 2. 特殊符號前 (%, ％, ℃, °)
+				if curr == '%' || curr == '％' || curr == '℃' || curr == '°' {
+					isUnsafe = true
+				}
+
+				// 3. 避頭點 (不應該出現在行首的符號)
+				// 這裡簡單列舉常見的：，。？！、；：」』）
+				if strings.ContainsRune("，。？！、；：」』）!,.:;?)]}", curr) {
+					isUnsafe = true
+				}
+
+				if !isUnsafe {
+					splitIdx = idx
+					break
+				}
+			}
+
+			res = append(res, strings.TrimSpace(string(runes[:splitIdx])))
+			p = strings.TrimSpace(string(runes[splitIdx:]))
 		}
 		if p != "" {
 			res = append(res, p)
