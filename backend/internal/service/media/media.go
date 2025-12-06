@@ -119,7 +119,7 @@ type Segment struct {
 }
 
 // MakeSegments 製作影片片段並 concat
-func MakeSegments(base, resolution string, fps int, bgColor string, segments []Segment, transition string, blurBackground bool) (string, error) {
+func MakeSegments(base, resolution string, fps int, bgColor string, segments []Segment, transition string, blurBackground bool, onProgress func(int)) (string, error) {
 	outDir := filepath.Join(base, "segments")
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return "", err
@@ -289,6 +289,11 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 
 		segmentFiles = append(segmentFiles, target)
 		durations = append(durations, durationSec)
+
+		if onProgress != nil {
+			percent := int(float64(i+1) / float64(len(segments)+1) * 100)
+			onProgress(percent)
+		}
 	}
 
 	final := filepath.Join(base, "video.mp4")
