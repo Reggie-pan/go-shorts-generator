@@ -147,6 +147,19 @@ func (w *Worker) process(rec *job.Record) error {
 		// 字幕長度 = 語音長度 + 靜音長度
 		// 這樣字幕會顯示直到下一句開始
 		durations = append(durations, dur+silenceDur)
+
+		// Update Progress: 15% -> 35%
+		// TTS processing usually takes some time, so we update progress here.
+		if len(lines) > 0 {
+			currentProgress := 15 + int(float64(i+1)/float64(len(lines))*20)
+			if currentProgress > 35 {
+				currentProgress = 35
+			}
+			if currentProgress != rec.Progress {
+				rec.Progress = currentProgress
+				_ = w.store.UpdateJob(rec)
+			}
+		}
 	}
 
 	rec.Progress = 35
@@ -202,7 +215,17 @@ func (w *Worker) process(rec *job.Record) error {
 	segments := media.BuildVideoTimeline(materials, rec.Request.Materials, int(totalVoiceDur*1000))
 	log.Debug().Str("job", rec.ID).Str("resolution", rec.Request.Video.Resolution).Msg("製作影片片段")
 
-	videoPath, err := media.MakeSegments(base, rec.Request.Video.Resolution, rec.Request.Video.FPS, rec.Request.Video.Background, segments, rec.Request.Video.Transition, rec.Request.Video.BlurBackground)
+	videoPath, err := media.MakeSegments(base, rec.Request.Video.Resolution, rec.Request.Video.FPS, rec.Request.Video.Background, segments, rec.Request.Video.Transition, rec.Request.Video.BlurBackground, func(percent int) {
+		// Video Generation: 35% -> 70%
+		currentProgress := 35 + int(float64(percent)*0.35)
+		if currentProgress > 70 {
+			currentProgress = 70
+		}
+		if currentProgress != rec.Progress {
+			rec.Progress = currentProgress
+			_ = w.store.UpdateJob(rec)
+		}
+	})
 	if err != nil {
 		return fmt.Errorf("製作影片失敗: %v", err)
 	}
