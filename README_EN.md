@@ -1,5 +1,11 @@
 # GoShortsGenerator
 
+<div align="center">
+
+#### [中文](README.md) | English
+
+</div>
+
 ![Brand Banner](assets/images/banner.jpg)
 
 <div align="center">
