@@ -143,14 +143,8 @@ export default function App() {
 
   const loadJobs = async () => {
     const res = await api.listJobs()
-    const jobsList = res.data || []
-    // 按建立時間排序，新的在前面
-    const sortedJobs = jobsList.sort((a, b) => {
-      const timeA = new Date(a.created_at).getTime()
-      const timeB = new Date(b.created_at).getTime()
-      return timeB - timeA // 降序排列（新 → 舊）
-    })
-    setJobs(sortedJobs)
+    // 排序由後端決定
+    setJobs(res.data || [])
   }
   const loadBgm = async () => {
     const res = await api.listBGM()
