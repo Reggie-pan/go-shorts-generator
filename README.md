@@ -35,7 +35,7 @@
 *   **🤖 全自動化流程**：一鍵完成從腳本到成片的複雜工序，無需人工干預。
 *   **🧠 AI 智能賦能**：
     *   整合 **Google Gemini 2.0 Flash** 進行精準腳本斷句與語意分析。
-    *   搭配 **Microsoft Azure TTS** 生成自然流暢的神經網路語音。
+    *   支援 **Edge TTS**（免費）或 **Microsoft Azure TTS** 生成自然流暢的神經網路語音。
 *   **🎨 高度客製化**：
     *   支援自訂字幕樣式（字體、顏色、大小）。
     *   自由搭配背景音樂、轉場效果與背景模糊處理。
@@ -49,7 +49,7 @@
 | **後端** | Go 1.24 (Gin Framework) |
 | **資料儲存** | Local File System |
 | **容器化** | Docker, Docker Compose ([Docker Hub](https://hub.docker.com/r/reggiepan/goshortsgenerator)) |
-| **AI 引擎** | Google Gemini 2.0 Flash (LLM), Microsoft Azure TTS |
+| **AI 引擎** | Google Gemini 2.0 Flash (LLM), Edge TTS / Microsoft Azure TTS |
 | **影片處理** | FFmpeg |
 
 ## 快速開始 🚀
@@ -67,8 +67,8 @@ cd go-shorts-generator
 
 ```yaml
 environment:
-  - AZURE_TTS_KEY=your_azure_key       # 必填
-  - AZURE_TTS_REGION=your_azure_region # 必填
+  - AZURE_TTS_KEY=your_azure_key       # 可選 (若使用 Edge TTS 則不需要)
+  - AZURE_TTS_REGION=your_azure_region # 可選 (若使用 Edge TTS 則不需要)
   - GEMINI_API_KEY=your_gemini_key     # 必填
 ```
 
@@ -94,8 +94,8 @@ docker-compose up -d --build
 | `PORT` | 應用程式服務埠號 | `8080` |
 | `STORAGE_PATH` | 任務資料儲存路徑 | `/data` |
 | `BGM_PATH` | 背景音樂儲存路徑 | `/assets/bgm` |
-| `AZURE_TTS_KEY` | Azure TTS 服務金鑰 (**必填**) | `...` |
-| `AZURE_TTS_REGION` | Azure TTS 服務區域 (**必填**) | `...` |
+| `AZURE_TTS_KEY` | Azure TTS 服務金鑰 (可選，若使用 Edge TTS 則不需要) | `...` |
+| `AZURE_TTS_REGION` | Azure TTS 服務區域 (可選，若使用 Edge TTS 則不需要) | `...` |
 | `GEMINI_API_KEY` | Google Gemini API 金鑰 (**必填**) | `...` |
 | `AI_MODEL` | 使用的 Gemini 模型版本 | `gemini-2.0-flash` |
 

@@ -35,7 +35,7 @@
 *   **🤖 Fully Automated Workflow**: One-click completion of complex processes from script to final video, with no manual intervention required.
 *   **🧠 AI Powered**:
     *   Integrates **Google Gemini 2.0 Flash** for precise script segmentation and semantic analysis.
-    *   Uses **Microsoft Azure TTS** to generate natural, fluid neural network speech.
+    *   Supports **Edge TTS** (Free) or **Microsoft Azure TTS** to generate natural, fluid neural network speech.
 *   **🎨 Highly Customizable**:
     *   Supports custom subtitle styles (font, color, size).
     *   Freely mix background music, transition effects, and background blur processing.
@@ -49,7 +49,7 @@
 | **Backend** | Go 1.24 (Gin Framework) |
 | **Data Storage** | Local File System |
 | **Containerization** | Docker, Docker Compose ([Docker Hub](https://hub.docker.com/r/reggiepan/goshortsgenerator)) |
-| **AI Engine** | Google Gemini 2.0 Flash (LLM), Microsoft Azure TTS |
+| **AI Engine** | Google Gemini 2.0 Flash (LLM), Edge TTS / Microsoft Azure TTS |
 | **Video Processing** | FFmpeg |
 
 ## Quick Start 🚀
@@ -67,8 +67,8 @@ Modify `docker-compose.yml` and fill in your API Keys:
 
 ```yaml
 environment:
-  - AZURE_TTS_KEY=your_azure_key       # Required
-  - AZURE_TTS_REGION=your_azure_region # Required
+  - AZURE_TTS_KEY=your_azure_key       # Optional (Not required if using Edge TTS)
+  - AZURE_TTS_REGION=your_azure_region # Optional (Not required if using Edge TTS)
   - GEMINI_API_KEY=your_gemini_key     # Required
 ```
 
@@ -94,8 +94,8 @@ The following are descriptions of key environment variables in `docker-compose.y
 | `PORT` | Application service port | `8080` |
 | `STORAGE_PATH` | Task data storage path | `/data` |
 | `BGM_PATH` | Background music storage path | `/assets/bgm` |
-| `AZURE_TTS_KEY` | Azure TTS Service Key (**Required**) | `...` |
-| `AZURE_TTS_REGION` | Azure TTS Service Region (**Required**) | `...` |
+| `AZURE_TTS_KEY` | Azure TTS Service Key (Optional, not required if using Edge TTS) | `...` |
+| `AZURE_TTS_REGION` | Azure TTS Service Region (Optional, not required if using Edge TTS) | `...` |
 | `GEMINI_API_KEY` | Google Gemini API Key (**Required**) | `...` |
 | `AI_MODEL` | Gemini Model Version | `gemini-2.0-flash` |
 

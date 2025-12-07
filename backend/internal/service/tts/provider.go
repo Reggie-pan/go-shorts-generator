@@ -22,6 +22,8 @@ func GetProvider(name string, cfg *config.Config) (Provider, error) {
 	switch name {
 	case "azure_v1", "azure_v2":
 		return &AzureProvider{Key: cfg.AzureKey, Region: cfg.AzureRegion}, nil
+	case "edge_tts":
+		return &EdgeTTSProvider{}, nil
 	default:
 		return nil, fmt.Errorf("未知的 TTS provider: %s", name)
 	}
