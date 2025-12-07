@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"github.com/Reggie-pan/go-shorts-generator/internal/service/job"
@@ -72,6 +73,12 @@ func (s *Store) ListJobs(page, limit int) ([]*job.Record, int, error) {
 	for _, v := range s.data {
 		values = append(values, v)
 	}
+
+	// 按建立時間降序排列（最新的在最前面）
+	sort.Slice(values, func(i, j int) bool {
+		return values[i].CreatedAt.After(values[j].CreatedAt)
+	})
+
 	total := len(values)
 	start := (page - 1) * limit
 	if start >= total {
