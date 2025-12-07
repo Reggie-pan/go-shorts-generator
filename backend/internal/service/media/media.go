@@ -90,12 +90,18 @@ func BuildVideoTimeline(prepared []string, mats []job.Material, needDuration int
 		// 如果裁斷後長度太短 (例如 < 0.5秒)，可以直接忽略或湊滿
 		// 這裡簡單處理：只要 > 0 就加
 		if d > 0 {
+			// 取得音量，預設為 1.0
+			vol := mats[idx].Volume
+			if vol <= 0 {
+				vol = 1.0
+			}
 			segments = append(segments, Segment{
 				Path:   prepared[idx],
 				Start:  cursor,
 				End:    cursor + d,
 				Type:   mats[idx].Type,
 				Mute:   mats[idx].Mute,
+				Volume: vol,
 				Effect: mats[idx].Effect,
 			})
 			cursor += d
@@ -117,6 +123,7 @@ type Segment struct {
 	End    int
 	Type   string
 	Mute   bool
+	Volume float64
 	Effect string
 }
 
@@ -298,7 +305,8 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 			// [0:a] -> aformat -> apad (限制長度) -> [a]
 
 			// 使用 whole_dur 限制 apad 的輸出長度，避免無限 hang
-			filterComplex := fmt.Sprintf("[0:v]%s[v];[0:a]aformat=sample_rates=44100:channel_layouts=stereo,apad=whole_dur=%.2f[a]", finalVf, durationSec)
+			// 套用音量調整 (volume 濾鏡)
+			filterComplex := fmt.Sprintf("[0:v]%s[v];[0:a]volume=%.2f,aformat=sample_rates=44100:channel_layouts=stereo,apad=whole_dur=%.2f[a]", finalVf, seg.Volume, durationSec)
 
 			if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
 				"-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
