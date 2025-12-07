@@ -190,7 +190,7 @@
             "name": "provider",
             "in": "query",
             "schema": { "type": "string", "default": "azure_v1" },
-            "description": "TTS 提供者 (azure_v1, azure_v2)"
+            "description": "TTS 提供者 (azure_v1, azure_v2, edge_tts)"
           }
         ],
         "responses": {
@@ -337,7 +337,7 @@
             "type": "object",
             "description": "TTS 設定",
             "properties": {
-              "provider": { "type": "string", "enum": ["google", "azure_v1", "azure_v2"], "example": "azure_v1" },
+              "provider": { "type": "string", "enum": ["azure_v1", "azure_v2", "edge_tts"], "example": "azure_v1" },
               "voice": { "type": "string", "example": "zh-TW-YunJheNeural" },
               "locale": { "type": "string", "example": "zh-TW" },
               "speed": { "type": "number", "example": 1.0 },
