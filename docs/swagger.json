@@ -306,6 +306,13 @@
                 "path_or_url": { "type": "string", "description": "檔案路徑或 URL" },
                 "duration_sec": { "type": "number", "description": "持續時間 (秒)" },
                 "mute": { "type": "boolean", "description": "是否靜音 (僅 video 有效)" },
+                "volume": {
+                  "type": "number",
+                  "description": "音量 0~1 (僅 video 且不靜音有效)",
+                  "default": 1,
+                  "minimum": 0,
+                  "maximum": 1
+                },
                 "effect": {
                   "type": "string",
                   "description": "運鏡特效 (僅 image 有效)",
