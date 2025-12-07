@@ -142,34 +142,41 @@ const MaterialItem = ({
                 />
               </label>
             )}
-
-            {material.type === 'video' && (
-              <button 
-                className={`btn-toggle ${material.mute ? 'active' : ''}`}
-                onClick={() => onUpdate(index, 'mute', !material.mute)}
-                title={material.mute ? t('unmute') : t('mute')}
-              >
-                <i className={material.mute ? "fas fa-volume-mute" : "fas fa-volume-up"}></i>
-                <span>{material.mute ? t('muted') : t('unmuted')}</span>
-              </button>
-            )}
-
-            {material.type === 'video' && !material.mute && (
-              <div className="volume-control">
-                <label><i className="fas fa-volume-up"></i> {t('materialVolume')}</label>
-                <input 
-                  type="number" 
-                  step="0.1" 
-                  min="0" 
-                  max="1"
-                  value={material.volume ?? 1} 
-                  onChange={(e) => onUpdate(index, 'volume', Number(e.target.value))} 
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* 影片音訊控制 - 獨立行 */}
+      {material.type === 'video' && (
+        <div className="video-audio-controls">
+          <button 
+            className={`btn-toggle ${material.mute ? 'active' : ''}`}
+            onClick={() => onUpdate(index, 'mute', !material.mute)}
+            title={material.mute ? t('unmute') : t('mute')}
+          >
+            <i className={material.mute ? "fas fa-volume-mute" : "fas fa-volume-up"}></i>
+            <span>{material.mute ? t('muted') : t('unmuted')}</span>
+          </button>
+
+          {!material.mute && (
+            <div className="volume-slider-group">
+              <label><i className="fas fa-volume-up"></i> {t('materialVolume')}</label>
+              <div className="volume-slider-container">
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1"
+                  step="0.1"
+                  value={material.volume ?? 1} 
+                  onChange={(e) => onUpdate(index, 'volume', Number(e.target.value))} 
+                  className="volume-slider"
+                />
+                <span className="volume-value">{(material.volume ?? 1).toFixed(1)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
