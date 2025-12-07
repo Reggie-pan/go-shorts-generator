@@ -15,6 +15,7 @@ type Material struct {
 	Path        string  `json:"path"`   // 上傳後的路徑或 URL
 	DurationSec float64 `json:"duration_sec"`
 	Mute        bool    `json:"mute"`   // 是否靜音 (僅 video 有效)
+	Volume      float64 `json:"volume"` // 音量 0~1 (僅 video 且不靜音有效)
 	Effect      string  `json:"effect"` // 運鏡特效 (僅 image 有效)
 }
 
