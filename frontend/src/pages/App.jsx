@@ -621,7 +621,7 @@ export default function App() {
         )}
 
         <h3><i className="fas fa-closed-captioning"></i> {t('subtitleStyle')}</h3>
-        <div className="grid">
+        <div className="grid grid-cols-3">
           <div>
             <label>{t('font')}</label>
             <SearchableSelect 
@@ -642,77 +642,74 @@ export default function App() {
             <label>{t('yOffset')}</label>
             <input type="number" value={form.subtitle_style.y_offset} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, y_offset: Number(e.target.value) } })} />
           </div>
-          <div>
+        </div>
+        
+        {/* 顏色設定區 - 使用緊湊的 inline 樣式 */}
+        <div className="subtitle-color-row">
+          <div className="color-field">
             <label><i className="fas fa-palette"></i> {t('color')}</label>
-            <div className="color-picker-group">
-              <div className="color-preview-wrapper">
+            <div className="color-picker-inline">
+              <input 
+                type="color" 
+                value={`#${form.subtitle_style.color || 'FFFFFF'}`} 
+                onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
+                className="color-input-sm"
+              />
+              <div className="hex-input-inline">
+                <span>#</span>
                 <input 
-                  type="color" 
-                  value={`#${form.subtitle_style.color || 'FFFFFF'}`} 
+                  type="text" 
+                  value={form.subtitle_style.color || 'FFFFFF'} 
                   onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
-                  className="color-input"
+                  placeholder="FFFFFF"
+                  maxLength="6"
+                  className="hex-input"
                 />
-              </div>
-              <div className="hex-input-wrapper">
-                <div className="hex-input-group">
-                  <span>#</span>
-                  <input 
-                    type="text" 
-                    value={form.subtitle_style.color || 'FFFFFF'} 
-                    onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, color: e.target.value.replace('#', '').toUpperCase() } })} 
-                    placeholder="FFFFFF"
-                    maxLength="6"
-                    className="hex-input"
-                  />
-                </div>
               </div>
             </div>
           </div>
-          <div>
+          <div className="number-field">
             <label>{t('maxLineWidth')}</label>
             <input type="number" value={form.subtitle_style.max_line_width} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, max_line_width: Number(e.target.value) } })} />
           </div>
-          <div>
+          <div className="number-field">
             <label>{t('outlineWidth')}</label>
             <input type="number" step="0.1" value={form.subtitle_style.outline_width} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, outline_width: Number(e.target.value) } })} />
           </div>
-          <div>
+        </div>
+        
+        {/* 邊框顏色與預覽按鈕 */}
+        <div className="subtitle-color-row">
+          <div className="color-field">
             <label><i className="fas fa-palette"></i> {t('outlineColor')}</label>
-            <div className="color-picker-group">
-              <div className="color-preview-wrapper">
+            <div className="color-picker-inline">
+              <input 
+                type="color" 
+                value={`#${form.subtitle_style.outline_color || '000000'}`} 
+                onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, outline_color: e.target.value.replace('#', '').toUpperCase() } })} 
+                className="color-input-sm"
+              />
+              <div className="hex-input-inline">
+                <span>#</span>
                 <input 
-                  type="color" 
-                  value={`#${form.subtitle_style.outline_color || '000000'}`} 
+                  type="text" 
+                  value={form.subtitle_style.outline_color || '000000'} 
                   onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, outline_color: e.target.value.replace('#', '').toUpperCase() } })} 
-                  className="color-input"
+                  placeholder="000000"
+                  maxLength="6"
+                  className="hex-input"
                 />
-              </div>
-              <div className="hex-input-wrapper">
-                <div className="hex-input-group">
-                  <span>#</span>
-                  <input 
-                    type="text" 
-                    value={form.subtitle_style.outline_color || '000000'} 
-                    onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, outline_color: e.target.value.replace('#', '').toUpperCase() } })} 
-                    placeholder="000000"
-                    maxLength="6"
-                    className="hex-input"
-                  />
-                </div>
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <label style={{ visibility: 'hidden' }}>Placeholder</label>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-              <button 
-                className="btn-secondary btn-preview" 
-                onClick={generatePreview} 
-                disabled={previewLoading}
-              >
-                {previewLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync"></i>} {t('preview')}
-              </button>
-            </div>
+          <div className="preview-btn-container">
+            <button 
+              className="btn-secondary btn-preview" 
+              onClick={generatePreview} 
+              disabled={previewLoading}
+            >
+              {previewLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync"></i>} {t('preview')}
+            </button>
           </div>
         </div>
 
