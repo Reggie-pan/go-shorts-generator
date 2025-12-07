@@ -10,9 +10,9 @@ const blankMaterial = { type: 'image', source: 'url', path: '', duration_sec: 3 
 const defaultRequest = {
   script: '這是一段示範腳本。\n第二句會跟字幕同步。',
   materials: [{ ...blankMaterial, path: 'https://picsum.photos/720/1280', duration_sec: 3 }],
-  tts: { provider: 'azure_v1', voice: '', locale: 'en-US', speed: 1, pitch: 0 },
+  tts: { provider: 'edge_tts', voice: '', locale: 'en-US', speed: 1, pitch: 0 },
   video: { resolution: '1080x1920', fps: 30, speed: 1, background: '000000' },
-  bgm: { source: 'preset', path: 'default.mp3', volume: 0.2 },
+  bgm: { source: 'preset', path: 'random', volume: 0.2 },
   subtitle_style: { font: 'Noto Sans TC', size: 16, color: 'FFFFFF', y_offset: 70, max_line_width: 16, outline_width: 0.1, outline_color: '000000' }
 }
 
@@ -415,7 +415,8 @@ export default function App() {
             <SearchableSelect 
               options={[
                 { label: 'azure_v1', value: 'azure_v1' },
-                { label: 'azure_v2', value: 'azure_v2' }
+                { label: 'azure_v2', value: 'azure_v2' },
+                { label: t('edgeTtsFree'), value: 'edge_tts' }
               ]}
               value={form.tts.provider}
               onChange={(val) => setForm({ ...form, tts: { ...form.tts, provider: val } })}
@@ -570,7 +571,7 @@ export default function App() {
               <div className="bgm-input-group">
                 {form.bgm.source === 'preset' ? (
                   <SearchableSelect 
-                    options={['random', form.bgm.path, ...bgmList]
+                    options={['random', ...bgmList]
                       .filter((v, i, arr) => v && arr.indexOf(v) === i)
                       .map((name) => ({ label: name === 'random' ? t('random') : name, value: name }))
                     }
