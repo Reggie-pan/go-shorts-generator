@@ -4,7 +4,7 @@ WORKDIR /app/backend
 COPY backend/go.mod backend/go.sum* ./
 RUN go mod download
 COPY backend/. .
-RUN go build -o /app/server ./cmd/server
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/server ./cmd/server
 
 FROM node:18-bullseye AS frontend-builder
 WORKDIR /app/frontend
