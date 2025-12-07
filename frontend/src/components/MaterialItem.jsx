@@ -153,6 +153,20 @@ const MaterialItem = ({
                 <span>{material.mute ? t('muted') : t('unmuted')}</span>
               </button>
             )}
+
+            {material.type === 'video' && !material.mute && (
+              <div className="volume-control">
+                <label><i className="fas fa-volume-up"></i> {t('materialVolume')}</label>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  min="0" 
+                  max="1"
+                  value={material.volume ?? 1} 
+                  onChange={(e) => onUpdate(index, 'volume', Number(e.target.value))} 
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
