@@ -91,11 +91,12 @@ func BuildVideoTimeline(prepared []string, mats []job.Material, needDuration int
 		// 這裡簡單處理：只要 > 0 就加
 		if d > 0 {
 			segments = append(segments, Segment{
-				Path:  prepared[idx],
-				Start: cursor,
-				End:   cursor + d,
-				Type:  mats[idx].Type,
-				Mute:  mats[idx].Mute,
+				Path:   prepared[idx],
+				Start:  cursor,
+				End:    cursor + d,
+				Type:   mats[idx].Type,
+				Mute:   mats[idx].Mute,
+				Effect: mats[idx].Effect,
 			})
 			cursor += d
 		}
@@ -111,11 +112,12 @@ func BuildVideoTimeline(prepared []string, mats []job.Material, needDuration int
 }
 
 type Segment struct {
-	Path  string
-	Start int
-	End   int
-	Type  string
-	Mute  bool
+	Path   string
+	Start  int
+	End    int
+	Type   string
+	Mute   bool
+	Effect string
 }
 
 // MakeSegments 製作影片片段並 concat
@@ -215,10 +217,53 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 				// 圖片：loop
 				// 圖片本身就是靜態的，loop 足夠長即可，不需要 tpad，
 				// 因為我們已經在 input 參數 -t 指定了 durationSec (含 overlap)。
+
+				// 1. 計算特效濾鏡
+				scale := ",scale=1080:1920" // zoompan defaults to 1280x720, so we must scale back
+				if w != 1080 || h != 1920 {
+					scale = fmt.Sprintf(",scale=%d:%d", w, h)
+				}
+
+				effectFilter := ""
+				if seg.Effect != "" && seg.Effect != "none" {
+					// 使用 time 和 durationSec 進行插值，避免依賴 frames
+					// zoompan d=1 配合 loop 1，每一幀輸入產生一幀輸出
+					d := durationSec
+					switch seg.Effect {
+					case "zoom_in":
+						// Zoom 1.0 -> 1.5. Center.
+						// 改用 time-based，避免 recursive 'zoom' 導致 segfault
+						effectFilter = fmt.Sprintf(",zoompan=z='min(1.0+0.5*time/%.4f,1.5)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d", d, w, h, fps)
+					case "zoom_out":
+						// Zoom 1.5 -> 1.0. Center.
+						// z = 1.5 - 0.5 * (time / duration)
+						effectFilter = fmt.Sprintf(",zoompan=z='1.5-0.5*time/%.4f':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d", d, w, h, fps)
+					case "pan_left":
+						// Moveright to left
+						effectFilter = fmt.Sprintf(",zoompan=z=1.5:d=1:x='(1-time/%.4f)*(iw-iw/zoom)':y='(ih-ih/zoom)/2':s=%dx%d:fps=%d", d, w, h, fps)
+					case "pan_right":
+						effectFilter = fmt.Sprintf(",zoompan=z=1.5:d=1:x='(time/%.4f)*(iw-iw/zoom)':y='(ih-ih/zoom)/2':s=%dx%d:fps=%d", d, w, h, fps)
+					case "pan_up":
+						effectFilter = fmt.Sprintf(",zoompan=z=1.5:d=1:x='(iw-iw/zoom)/2':y='(1-time/%.4f)*(ih-ih/zoom)':s=%dx%d:fps=%d", d, w, h, fps)
+					case "pan_down":
+						effectFilter = fmt.Sprintf(",zoompan=z=1.5:d=1:x='(iw-iw/zoom)/2':y='(time/%.4f)*(ih-ih/zoom)':s=%dx%d:fps=%d", d, w, h, fps)
+					case "diagonal_pan":
+						effectFilter = fmt.Sprintf(",zoompan=z=1.5:d=1:x='(time/%.4f)*(iw-iw/zoom)':y='(time/%.4f)*(ih-ih/zoom)':s=%dx%d:fps=%d", d, d, w, h, fps)
+					case "rotate":
+						effectFilter = fmt.Sprintf(",rotate=a='0.05*sin(t*2)':ow=iw+100:oh=ih+100%s", scale)
+					case "shake":
+						effectFilter = fmt.Sprintf(",crop=w=iw-40:h=ih-40:x='20+random(1)*20-10':y='20+random(1)*20-10'%s", scale)
+					}
+				}
+
+				// 應用 vf (已經 resize 好了) -> effect -> output -> force FPS again to be safe
+				finalFilter := fmt.Sprintf("[0:v]%s%s,fps=%d[v]", vf, effectFilter, fps)
+
+				// 恢復使用 loop 1，配合 zoompan d=1
 				cmdArgs := []string{"-y",
 					"-loop", "1", "-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
 					"-f", "lavfi", "-t", fmt.Sprintf("%.2f", durationSec), "-i", "anullsrc=r=44100:cl=stereo",
-					"-filter_complex", fmt.Sprintf("[0:v]%s[v]", vf), // 圖片不需要 tpad，因為 loop 已經無限長
+					"-filter_complex", finalFilter,
 					"-map", "[v]", "-map", "1:a",
 					"-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-pix_fmt", "yuv420p", "-shortest", target}
 
@@ -226,7 +271,7 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 					return "", fmt.Errorf("製作圖片片段失敗(seg %d): %v", i, err)
 				}
 			} else {
-				// 影片(靜音)：只取畫面
+				// 靜音影片：只取畫面，配合靜音音訊
 				// 影片需要 tpad，因為影片長度是固定的。
 				// 注意：durationSec 已經包含了 overlap (如果是中間片段)。
 				// 我們希望影片播完後，停留在最後一幀直到 durationSec 結束。
@@ -246,16 +291,14 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 			// 音訊部分：如果影片長度不夠，音訊會變短，導致 output 變短。
 			// 我們需要 pad 音訊嗎？
 			// 轉場時通常希望聲音 crossfade。如果影片沒聲音了，補靜音即可。
-			// aformat 之後加入 apad？
-			// 這裡先處理視頻 tpad。音訊部分若短於視頻，ffmpeg -shortest 會以最短的為準嗎？
-			// 我們指定了 -t durationSec，所以 ffmpeg 會嘗試輸出這麼長。
-			// 如果音訊不夠長，apad 可以補靜音。
+			// apad 需要限制長度，否則會無限等待輸入
 
 			// 構建 filter complex
 			// [0:v] -> finalVf -> [v]
-			// [0:a] -> aformat -> apad -> [a]
+			// [0:a] -> aformat -> apad (限制長度) -> [a]
 
-			filterComplex := fmt.Sprintf("[0:v]%s[v];[0:a]aformat=sample_rates=44100:channel_layouts=stereo,apad[a]", finalVf)
+			// 使用 whole_dur 限制 apad 的輸出長度，避免無限 hang
+			filterComplex := fmt.Sprintf("[0:v]%s[v];[0:a]aformat=sample_rates=44100:channel_layouts=stereo,apad=whole_dur=%.2f[a]", finalVf, durationSec)
 
 			if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
 				"-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
@@ -352,7 +395,6 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 				outA = "outa"
 			}
 
-			// xfade duration 保持 1.0，但 offset 提早到 overlap (1.2)
 			// 這樣有 0.2s 的安全緩衝
 			filterComplex += fmt.Sprintf("[%s][%s]xfade=transition=%s:duration=1:offset=%.2f[%s];", prevV, nextV, transition, offset, outV)
 			// acrossfade duration 必須等於 overlap (1.2)，以保持音訊同步
@@ -398,9 +440,6 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 	}
 	if resolution != "" {
 		if p := strings.Split(resolution, "x"); len(p) == 2 {
-			if _, err := strconv.Atoi(p[0]); err == nil {
-				// resX = w
-			}
 			if h, err := strconv.Atoi(p[1]); err == nil {
 				resY = h
 			}

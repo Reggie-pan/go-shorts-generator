@@ -76,6 +76,28 @@ const MaterialItem = ({
             searchable={false}
           />
         </div>
+        {material.type === 'image' && (
+          <div className="form-group">
+            <label><i className="fas fa-magic"></i> {t('effect')}</label>
+            <SearchableSelect 
+              options={[
+                { label: t('effectNone'), value: 'none' },
+                { label: t('effectZoomIn'), value: 'zoom_in' },
+                { label: t('effectZoomOut'), value: 'zoom_out' },
+                { label: t('effectPanLeft'), value: 'pan_left' },
+                { label: t('effectPanRight'), value: 'pan_right' },
+                { label: t('effectPanUp'), value: 'pan_up' },
+                { label: t('effectPanDown'), value: 'pan_down' },
+                { label: t('effectDiagonalPan'), value: 'diagonal_pan' },
+                { label: t('effectRotate'), value: 'rotate' },
+                { label: t('effectShake'), value: 'shake' },
+              ]}
+              value={material.effect || 'none'}
+              onChange={(val) => onUpdate(index, 'effect', val)}
+              searchable={false}
+            />
+          </div>
+        )}
         <div className="form-group">
           <label><i className="fas fa-link"></i> {t('source')}</label>
           <SearchableSelect 

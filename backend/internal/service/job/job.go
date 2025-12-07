@@ -14,7 +14,8 @@ type Material struct {
 	Source      string  `json:"source"` // "upload", "url"
 	Path        string  `json:"path"`   // 上傳後的路徑或 URL
 	DurationSec float64 `json:"duration_sec"`
-	Mute        bool    `json:"mute"` // 是否靜音 (僅 video 有效)
+	Mute        bool    `json:"mute"`   // 是否靜音 (僅 video 有效)
+	Effect      string  `json:"effect"` // 運鏡特效 (僅 image 有效)
 }
 
 type TTSSetting struct {

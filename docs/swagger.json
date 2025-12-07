@@ -305,7 +305,23 @@
                 "source": { "type": "string", "enum": ["upload", "url"], "description": "素材來源" },
                 "path_or_url": { "type": "string", "description": "檔案路徑或 URL" },
                 "duration_sec": { "type": "number", "description": "持續時間 (秒)" },
-                "mute": { "type": "boolean", "description": "是否靜音 (僅 video 有效)" }
+                "mute": { "type": "boolean", "description": "是否靜音 (僅 video 有效)" },
+                "effect": {
+                  "type": "string",
+                  "description": "運鏡特效 (僅 image 有效)",
+                  "enum": [
+                    "none",
+                    "zoom_in",
+                    "zoom_out",
+                    "pan_left",
+                    "pan_right",
+                    "pan_up",
+                    "pan_down",
+                    "diagonal_pan",
+                    "rotate",
+                    "shake"
+                  ]
+                }
               },
               "required": ["type", "source", "path_or_url", "duration_sec"]
             }
