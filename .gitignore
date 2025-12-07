@@ -2,3 +2,4 @@ data/
 data/jobs.json
 frontend/node_modules
 frontend/dist/
+.agent/
