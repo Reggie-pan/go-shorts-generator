@@ -156,11 +156,12 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 	var vf string
 	if blurBackground {
 		// 模糊背景邏輯 (垂直影片)
-		// 1. 背景層：縮放並填滿 (increase) -> Crop -> 縮小 (1/4) -> 模糊 -> 放大回原尺寸
+		// 優化版：減少縮放次數以降低 CPU 使用
+		// 1. 背景層：直接縮放到小尺寸 -> 模糊 -> 放大回目標尺寸
 		// 2. 前景層：縮放並適應 (decrease)
 		// 3. Overlay
-		vf = fmt.Sprintf("split[bg][fg];[bg]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,scale=iw/4:-1,boxblur=10:5,scale=%d:%d:flags=neighbor[bg_blurred];[fg]scale=%d:%d:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(W-w)/2:(H-h)/2,setsar=1,fps=%d",
-			w, h, w, h, w, h, w, h, fps)
+		vf = fmt.Sprintf("split[bg][fg];[bg]scale=270:-1,boxblur=8:4,scale=%d:%d:flags=bilinear[bg_blurred];[fg]scale=%d:%d:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(W-w)/2:(H-h)/2,setsar=1,fps=%d",
+			w, h, w, h, fps)
 	} else {
 		// 預設邏輯：黑邊
 		vf = fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:color=%s,setsar=1,fps=%d",
@@ -272,7 +273,7 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 					"-f", "lavfi", "-t", fmt.Sprintf("%.2f", durationSec), "-i", "anullsrc=r=44100:cl=stereo",
 					"-filter_complex", finalFilter,
 					"-map", "[v]", "-map", "1:a",
-					"-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-pix_fmt", "yuv420p", "-shortest", target}
+					"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target}
 
 				if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", cmdArgs...); err != nil {
 					return "", fmt.Errorf("製作圖片片段失敗(seg %d): %v", i, err)
@@ -288,7 +289,7 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 					"-f", "lavfi", "-t", fmt.Sprintf("%.2f", durationSec), "-i", "anullsrc=r=44100:cl=stereo",
 					"-filter_complex", fmt.Sprintf("[0:v]%s[v]", finalVf),
 					"-map", "[v]", "-map", "1:a",
-					"-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
+					"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
 					return "", fmt.Errorf("製作影片片段(靜音 seg %d)失敗: %v", i, err)
 				}
 			}
@@ -312,7 +313,7 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 				"-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
 				"-filter_complex", filterComplex,
 				"-map", "[v]", "-map", "[a]",
-				"-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
+				"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
 
 				// 若失敗，可能是沒有音軌，嘗試靜音模式重試
 				if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
@@ -320,7 +321,7 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 					"-f", "lavfi", "-t", fmt.Sprintf("%.2f", durationSec), "-i", "anullsrc=r=44100:cl=stereo",
 					"-filter_complex", fmt.Sprintf("[0:v]%s[v]", finalVf),
 					"-map", "[v]", "-map", "1:a",
-					"-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
+					"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
 					return "", fmt.Errorf("製作影片片段失敗(重試靜音 seg %d): %v", i, err)
 				}
 			}
@@ -420,7 +421,7 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 		for _, f := range segmentFiles {
 			args = append(args, "-i", f)
 		}
-		args = append(args, "-filter_complex", filterComplex, "-map", "[outv]", "-map", "[outa]", "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-pix_fmt", "yuv420p", final)
+		args = append(args, "-filter_complex", filterComplex, "-map", "[outv]", "-map", "[outa]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", final)
 
 		// Debug Log
 		fmt.Printf("Transition FFmpeg Args: %v\n", args)
