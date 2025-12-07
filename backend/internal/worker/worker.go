@@ -173,8 +173,8 @@ func (w *Worker) process(rec *job.Record) error {
 	_ = os.WriteFile(concatTxt, []byte(strings.Join(list, "\n")), 0o644)
 
 	voiceOut := filepath.Join(base, "voice.wav")
-	// 合併語音，並再次重編碼，確保萬無一失
-	if out, err := utils.RunCmd("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatTxt, "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", voiceOut); err != nil {
+	// 合併語音，使用 copy 模式避免重編碼 (前面已統一格式)
+	if out, err := utils.RunCmd("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatTxt, "-c:a", "copy", voiceOut); err != nil {
 		return fmt.Errorf("合併語音失敗: %v / %s", err, out)
 	}
 
@@ -328,14 +328,14 @@ func (w *Worker) process(rec *job.Record) error {
 		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[bgm];[2:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][bgm][tts]amix=inputs=3:duration=first[aout]`,
 			videoFilter, finalDuration, rec.Request.BGM.Volume, finalDuration, voiceSeconds, finalDuration)
 
-		args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-shortest", output}
+		args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-shortest", output}
 	} else {
 		// 2 inputs: VideoAudio, TTS
 		// 使用 duration=first，以 video_audio 為基準
 		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][tts]amix=inputs=2:duration=first[aout]`,
 			videoFilter, finalDuration, voiceSeconds, finalDuration)
 
-		args = []string{"-y", "-i", videoPath, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-shortest", output}
+		args = []string{"-y", "-i", videoPath, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-shortest", output}
 	}
 	if out, err := utils.RunCmdTimeout(5*time.Minute, "ffmpeg", args...); err != nil {
 		return fmt.Errorf("合成最終影片失敗: %v / %s", err, out)
