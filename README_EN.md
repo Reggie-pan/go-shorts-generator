@@ -39,6 +39,9 @@
 *   **🎨 Highly Customizable**:
     *   Supports custom subtitle styles (font, color, size).
     *   Freely mix background music, transition effects, and background blur processing.
+*   **🎬 Title Cover**:
+    *   Supports automatic generation of video opening covers with title text and gradient/blurred backgrounds.
+    *   Optional title voice, with cover duration automatically adjusted based on voice length.
 *   **🐳 Containerized Deployment**: Built on Docker architecture for simple deployment and consistent environments.
 
 ## Tech Stack 🛠️

@@ -291,6 +291,41 @@
           "outline_color": { "type": "string", "example": "000000", "description": "描邊顏色 (Hex)" }
         }
       },
+      "CoverStyle": {
+        "type": "object",
+        "description": "封面樣式設定",
+        "properties": {
+          "enabled": { "type": "boolean", "description": "是否啟用封面", "default": false },
+          "title": { "type": "string", "description": "標題文字", "example": "今日頭條新聞" },
+          "title_voice": { "type": "boolean", "description": "是否為標題生成語音", "default": false },
+          "duration": {
+            "type": "number",
+            "description": "封面時長（秒），若 title_voice=true 則此欄位無效",
+            "default": 2,
+            "example": 2
+          },
+          "extend_duration": {
+            "type": "number",
+            "description": "延長時長（秒），封面語音結束後延長的時間",
+            "default": 0,
+            "example": 0
+          },
+          "background_type": {
+            "type": "string",
+            "enum": ["gradient", "solid", "image"],
+            "description": "背景類型：gradient（漸層）、solid（單色）、image（圖片）",
+            "default": "gradient"
+          },
+          "background_blur": { "type": "boolean", "description": "是否模糊背景", "default": true },
+          "gradient_colors": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "漸層/單色顏色 (Hex)",
+            "example": ["FF6B9D", "FFE66D", "4ECDC4"]
+          },
+          "background_image": { "type": "string", "description": "背景圖片路徑或 URL（當 background_type=image）" }
+        }
+      },
       "JobCreateRequest": {
         "type": "object",
         "properties": {
@@ -362,7 +397,8 @@
               "volume": { "type": "number", "example": 0.2 }
             }
           },
-          "subtitle_style": { "$ref": "#/components/schemas/SubtitleStyle" }
+          "subtitle_style": { "$ref": "#/components/schemas/SubtitleStyle" },
+          "cover_style": { "$ref": "#/components/schemas/CoverStyle" }
         },
         "required": ["script", "materials", "tts", "video"]
       }
