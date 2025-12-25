@@ -13,7 +13,8 @@ const defaultRequest = {
   tts: { provider: 'edge_tts', voice: '', locale: 'en-US', speed: 1, pitch: 0 },
   video: { resolution: '1080x1920', fps: 30, speed: 1, background: '000000' },
   bgm: { source: 'preset', path: 'random', volume: 0.2 },
-  subtitle_style: { font: 'Noto Sans TC', size: 16, color: 'FFFFFF', y_offset: 70, max_line_width: 16, outline_width: 0.1, outline_color: '000000' }
+  subtitle_style: { font: 'Noto Sans TC', size: 16, color: 'FFFFFF', y_offset: 70, max_line_width: 16, outline_width: 0.1, outline_color: '000000' },
+  cover_style: { enabled: false, title: '', title_voice: false, duration: 2, extend_duration: 0, background_type: 'gradient', background_blur: true, gradient_colors: ['FF6B9D', 'FFE66D', '4ECDC4'], background_image: '', title_style: { font: 'Noto Sans TC', size: 24, color: 'FFFFFF', outline_width: 2, outline_color: '000000' } }
 }
 
 export default function App() {
@@ -211,9 +212,16 @@ export default function App() {
   const submit = async () => {
     try {
       await api.createJob(form)
+      await loadJobs()
       addToast('success', t('toastCreateSuccess'))
       setForm({ ...form }) // Don't reset script
-      loadJobs()
+      // 滾動到任務列表
+      setTimeout(() => {
+        const taskList = document.querySelector('.task-list-header')
+        if (taskList) {
+          taskList.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 100)
     } catch (err) {
       addToast('error', t('toastCreateFail') + (err.response?.data?.error || err.message))
     }
@@ -734,6 +742,269 @@ export default function App() {
             </div>
           </div>
         )}
+
+        <h3><i className="fas fa-image"></i> {t('coverSettings')}</h3>
+        <div className="grid">
+          <div>
+            <label className="checkbox-label">
+              <input 
+                type="checkbox" 
+                checked={form.cover_style?.enabled || false} 
+                onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, enabled: e.target.checked } })} 
+              />
+              {t('coverEnabled')}
+            </label>
+          </div>
+        </div>
+        
+        {form.cover_style?.enabled && (
+          <div className="cover-settings-container" style={{ 
+            marginTop: '16px', 
+            padding: '16px', 
+            border: '1px solid var(--border-primary)', 
+            borderRadius: '8px',
+            background: 'var(--bg-secondary)'
+          }}>
+            {/* 標題內容設定 */}
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fas fa-heading"></i> {t('coverTitleContent')}
+              </h4>
+              <div className="grid">
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label>{t('coverTitle')}</label>
+                  <input 
+                    type="text"
+                    value={form.cover_style?.title || ''} 
+                    onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title: e.target.value } })}
+                    placeholder={t('coverTitlePlaceholder')}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid" style={{ marginTop: '12px' }}>
+                <div>
+                  <label className="checkbox-label">
+                    <input 
+                      type="checkbox" 
+                      checked={form.cover_style?.title_voice || false} 
+                      onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_voice: e.target.checked } })} 
+                    />
+                    {t('coverTitleVoice')}
+                  </label>
+                  {form.cover_style?.title_voice && (
+                    <div className="hint-text" style={{ marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      <i className="fas fa-info-circle"></i> {t('coverTitleVoiceHint')}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label>{form.cover_style?.title_voice ? t('coverExtendDuration') : t('coverDuration')}</label>
+                  <input 
+                    type="number" 
+                    step="0.5"
+                    min="0"
+                    value={form.cover_style?.title_voice ? (form.cover_style?.extend_duration || 0) : (form.cover_style?.duration || 2)} 
+                    onChange={(e) => {
+                      if (form.cover_style?.title_voice) {
+                        setForm({ ...form, cover_style: { ...form.cover_style, extend_duration: Number(e.target.value) } })
+                      } else {
+                        setForm({ ...form, cover_style: { ...form.cover_style, duration: Number(e.target.value) } })
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 標題樣式設定 */}
+            <div style={{ marginBottom: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-primary)' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fas fa-font"></i> {t('coverTitleStyle')}
+              </h4>
+              <div className="grid grid-cols-3">
+                <div>
+                  <label>{t('font')}</label>
+                  <SearchableSelect 
+                    options={fontList.length > 0 
+                      ? fontList.map((font) => ({ label: font.name, value: font.name }))
+                      : [{ label: 'Noto Sans TC', value: 'Noto Sans TC' }]
+                    }
+                    value={form.cover_style?.title_style?.font || 'Noto Sans TC'}
+                    onChange={(val) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, font: val } } })}
+                    searchable={true}
+                  />
+                </div>
+                <div>
+                  <label>{t('fontSize')}</label>
+                  <input 
+                    type="number" 
+                    value={form.cover_style?.title_style?.size || 24} 
+                    onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, size: Number(e.target.value) } } })} 
+                  />
+                </div>
+                <div>
+                  <label>{t('outlineWidth')}</label>
+                  <input 
+                    type="number" 
+                    step="0.1"
+                    value={form.cover_style?.title_style?.outline_width || 2} 
+                    onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, outline_width: Number(e.target.value) } } })} 
+                  />
+                </div>
+              </div>
+              
+              <div className="subtitle-color-row" style={{ marginTop: '12px' }}>
+                <div className="color-field">
+                  <label><i className="fas fa-palette"></i> {t('color')}</label>
+                  <div className="color-picker-inline">
+                    <input 
+                      type="color" 
+                      value={`#${form.cover_style?.title_style?.color || 'FFFFFF'}`} 
+                      onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, color: e.target.value.replace('#', '').toUpperCase() } } })} 
+                      className="color-input-sm"
+                    />
+                    <div className="hex-input-inline">
+                      <span>#</span>
+                      <input 
+                        type="text" 
+                        value={form.cover_style?.title_style?.color || 'FFFFFF'} 
+                        onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, color: e.target.value.replace('#', '').toUpperCase() } } })} 
+                        placeholder="FFFFFF"
+                        maxLength="6"
+                        className="hex-input"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="color-field">
+                  <label><i className="fas fa-palette"></i> {t('outlineColor')}</label>
+                  <div className="color-picker-inline">
+                    <input 
+                      type="color" 
+                      value={`#${form.cover_style?.title_style?.outline_color || '000000'}`} 
+                      onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, outline_color: e.target.value.replace('#', '').toUpperCase() } } })} 
+                      className="color-input-sm"
+                    />
+                    <div className="hex-input-inline">
+                      <span>#</span>
+                      <input 
+                        type="text" 
+                        value={form.cover_style?.title_style?.outline_color || '000000'} 
+                        onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, outline_color: e.target.value.replace('#', '').toUpperCase() } } })} 
+                        placeholder="000000"
+                        maxLength="6"
+                        className="hex-input"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 背景設定 */}
+            <div style={{ paddingTop: '16px', borderTop: '1px solid var(--border-primary)' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fas fa-fill-drip"></i> {t('coverBackgroundSettings')}
+              </h4>
+              <div className="grid">
+                <div>
+                  <label>{t('coverBackgroundType')}</label>
+                  <SearchableSelect 
+                    options={[
+                      { label: t('coverBackgroundGradient'), value: 'gradient' },
+                      { label: t('coverBackgroundSolid'), value: 'solid' },
+                      { label: t('coverBackgroundImage'), value: 'image' }
+                    ]}
+                    value={form.cover_style?.background_type || 'gradient'}
+                    onChange={(val) => setForm({ ...form, cover_style: { ...form.cover_style, background_type: val } })}
+                    searchable={false}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '8px' }}>
+                  <label className="checkbox-label" style={{ margin: 0 }}>
+                    <input 
+                      type="checkbox" 
+                      checked={form.cover_style?.background_blur || false} 
+                      onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, background_blur: e.target.checked } })} 
+                    />
+                    {t('coverBackgroundBlur')}
+                  </label>
+                </div>
+              </div>
+
+              {(form.cover_style?.background_type === 'gradient' || form.cover_style?.background_type === 'solid') && (
+                <div style={{ marginTop: '12px' }}>
+                  <label>{form.cover_style?.background_type === 'solid' ? t('coverSolidColor') : t('coverGradientColors')}</label>
+                  <div className="color-picker-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {form.cover_style?.background_type === 'solid' ? (
+                      <div className="color-preview-wrapper">
+                        <input 
+                          type="color" 
+                          value={`#${(form.cover_style?.gradient_colors || ['FF6B9D'])[0]}`} 
+                          onChange={(e) => {
+                            const newColor = e.target.value.replace('#', '').toUpperCase()
+                            setForm({ ...form, cover_style: { ...form.cover_style, gradient_colors: [newColor] } })
+                          }} 
+                          className="color-input"
+                        />
+                      </div>
+                    ) : (
+                      (form.cover_style?.gradient_colors || ['FF6B9D', 'FFE66D', '4ECDC4']).map((color, idx) => (
+                        <div key={idx} className="color-preview-wrapper">
+                          <input 
+                            type="color" 
+                            value={`#${color}`} 
+                            onChange={(e) => {
+                              const newColors = [...(form.cover_style?.gradient_colors || ['FF6B9D', 'FFE66D', '4ECDC4'])]
+                              newColors[idx] = e.target.value.replace('#', '').toUpperCase()
+                              setForm({ ...form, cover_style: { ...form.cover_style, gradient_colors: newColors } })
+                            }} 
+                            className="color-input"
+                          />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {form.cover_style?.background_type === 'image' && (
+                <div style={{ marginTop: '12px' }}>
+                  <label>{t('coverBackgroundImageUpload')}</label>
+                  <div className="bgm-input-group">
+                    <input 
+                      type="text"
+                      value={form.cover_style?.background_image || ''} 
+                      onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, background_image: e.target.value } })}
+                      placeholder={t('urlPlaceholder')}
+                    />
+                    <label className="btn btn-secondary btn-file-select">
+                      <i className="fas fa-cloud-upload-alt"></i>
+                      <span>{t('selectFile')}</span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        style={{ display: 'none' }} 
+                        onChange={async (e) => {
+                          if (e.target.files[0]) {
+                            try {
+                              const res = await api.uploadFile(e.target.files[0])
+                              setForm({ ...form, cover_style: { ...form.cover_style, background_image: res.path } })
+                            } catch (err) {
+                              addToast('error', t('uploadFail'))
+                            }
+                          }
+                        }} 
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
 
         <div style={{ marginTop: 24 }}>
           <button 

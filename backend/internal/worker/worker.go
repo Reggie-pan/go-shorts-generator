@@ -233,6 +233,51 @@ func (w *Worker) process(rec *job.Record) error {
 	rec.Progress = 70
 	_ = w.store.UpdateJob(rec)
 
+	// 5. 封面處理 (Cover) - 只生成封面影片，稍後再拼接
+	var coverVideoPath string
+	if rec.Request.CoverStyle.Enabled {
+		log.Info().Str("job", rec.ID).Msg("生成封面...")
+		var coverVoicePath string
+		var coverDuration float64
+
+		if rec.Request.CoverStyle.TitleVoice {
+			// 為標題生成語音
+			titleVoicePath, _, err := provider.Synthesize(
+				rec.Request.CoverStyle.Title,
+				rec.Request.TTS.Voice,
+				rec.Request.TTS.Locale,
+				rec.Request.TTS.Speed,
+				rec.Request.TTS.Pitch,
+			)
+			if err != nil {
+				log.Warn().Err(err).Msg("生成封面標題語音失敗，使用預設時長")
+				coverDuration = rec.Request.CoverStyle.Duration
+			} else {
+				coverVoicePath = titleVoicePath
+				coverDuration, _ = utils.AudioDurationSeconds(titleVoicePath)
+			}
+		} else {
+			coverDuration = rec.Request.CoverStyle.Duration
+		}
+
+		generatedCoverPath, err := media.GenerateCoverVideo(
+			base,
+			rec.Request.CoverStyle,
+			rec.Request.SubtitleStyle,
+			rec.Request.Video.Resolution,
+			coverVoicePath,
+			coverDuration,
+		)
+		if err != nil {
+			log.Warn().Err(err).Msg("生成封面失敗，跳過封面")
+		} else {
+			coverVideoPath = generatedCoverPath
+			log.Info().Str("job", rec.ID).Msg("封面生成成功")
+		}
+		rec.Progress = 75
+		_ = w.store.UpdateJob(rec)
+	}
+
 	// 2. 準備背景音樂 (BGM)
 	var bgmInput string
 	if rec.Request.BGM.Source != "none" {
@@ -324,15 +369,16 @@ func (w *Worker) process(rec *job.Record) error {
 	if bgmInput != "" {
 		// 3 inputs: VideoAudio, BGM, TTS
 		// 使用 duration=first，以第一個輸入 (video_audio) 為基準
-		// video_audio 會被 trim 到 finalDuration
-		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[bgm];[2:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][bgm][tts]amix=inputs=3:duration=first[aout]`,
+		// TTS 音量放大補償 amix 的衰減
+		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[bgm];[2:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo,volume=3.0[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][bgm][tts]amix=inputs=3:duration=first[aout]`,
 			videoFilter, finalDuration, rec.Request.BGM.Volume, finalDuration, voiceSeconds, finalDuration)
 
 		args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-shortest", output}
 	} else {
 		// 2 inputs: VideoAudio, TTS
 		// 使用 duration=first，以 video_audio 為基準
-		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][tts]amix=inputs=2:duration=first[aout]`,
+		// TTS 音量放大補償 amix 的衰減
+		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo,volume=2.0[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][tts]amix=inputs=2:duration=first[aout]`,
 			videoFilter, finalDuration, voiceSeconds, finalDuration)
 
 		args = []string{"-y", "-i", videoPath, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-shortest", output}
@@ -342,6 +388,52 @@ func (w *Worker) process(rec *job.Record) error {
 	} else if out != "" {
 		log.Debug().Str("job", rec.ID).Msg(out)
 	}
+	rec.Progress = 90
+	_ = w.store.UpdateJob(rec)
+
+	// 6. 如果有封面，在最終合成後拼接
+	if coverVideoPath != "" {
+		log.Info().Str("job", rec.ID).Msg("拼接封面到最終影片...")
+
+		// 先重新編碼封面影片，確保與主影片格式完全一致
+		reEncodedCover := filepath.Join(base, "cover_reencoded.mp4")
+		if _, err := utils.RunCmdTimeout(2*time.Minute, "ffmpeg", "-y",
+			"-i", coverVideoPath,
+			"-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+			"-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2",
+			"-pix_fmt", "yuv420p",
+			"-r", "30",
+			reEncodedCover); err != nil {
+			log.Warn().Err(err).Msg("重新編碼封面失敗")
+			reEncodedCover = coverVideoPath
+		}
+
+		// 使用 concat demuxer 快速拼接（-c copy）
+		concatListPath := filepath.Join(base, "concat_final.txt")
+		concatContent := fmt.Sprintf("file '%s'\nfile '%s'\n", reEncodedCover, output)
+		if err := os.WriteFile(concatListPath, []byte(concatContent), 0o644); err != nil {
+			log.Warn().Err(err).Msg("寫入拼接列表失敗")
+		} else {
+			finalWithCover := filepath.Join(base, "final_with_cover.mp4")
+			if _, err := utils.RunCmdTimeout(2*time.Minute, "ffmpeg", "-y",
+				"-f", "concat", "-safe", "0", "-i", concatListPath,
+				"-c", "copy",
+				finalWithCover); err != nil {
+				log.Warn().Err(err).Msg("拼接封面失敗，使用原始影片")
+			} else {
+				// 使用 ffmpeg 複製（比 cp/copy 更可靠）
+				if _, err := utils.RunCmdTimeout(1*time.Minute, "ffmpeg", "-y",
+					"-i", finalWithCover,
+					"-c", "copy",
+					output); err != nil {
+					log.Warn().Err(err).Msg("複製最終影片失敗")
+				} else {
+					log.Info().Str("job", rec.ID).Msg("封面拼接成功")
+				}
+			}
+		}
+	}
+
 	rec.Progress = 95
 	_ = w.store.UpdateJob(rec)
 	return nil
