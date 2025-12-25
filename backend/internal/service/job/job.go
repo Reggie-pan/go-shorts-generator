@@ -51,6 +51,20 @@ type SubtitleStyle struct {
 	MaxLineWidth int     `json:"max_line_width"`
 }
 
+// CoverStyle 封面樣式設定
+type CoverStyle struct {
+	Enabled         bool          `json:"enabled"`          // 是否啟用封面
+	Title           string        `json:"title"`            // 標題文字
+	TitleVoice      bool          `json:"title_voice"`      // 是否為標題生成語音
+	Duration        float64       `json:"duration"`         // 封面顯示時長（秒），若 TitleVoice=true 則忽略
+	ExtendDuration  float64       `json:"extend_duration"`  // 延長時長（秒），封面結束後延長幾秒才開始腳本
+	BackgroundType  string        `json:"background_type"`  // 背景類型：gradient / solid / image
+	BackgroundBlur  bool          `json:"background_blur"`  // 是否模糊背景
+	GradientColors  []string      `json:"gradient_colors"`  // 漸層顏色（當 BackgroundType=gradient）
+	BackgroundImage string        `json:"background_image"` // 背景圖片路徑或 URL（當 BackgroundType=image）
+	TitleStyle      SubtitleStyle `json:"title_style"`      // 標題文字樣式
+}
+
 type JobCreateRequest struct {
 	Script        string        `json:"script"`
 	Materials     []Material    `json:"materials"`
@@ -58,6 +72,7 @@ type JobCreateRequest struct {
 	Video         VideoSetting  `json:"video"`
 	BGM           BGMSetting    `json:"bgm"`
 	SubtitleStyle SubtitleStyle `json:"subtitle_style"`
+	CoverStyle    CoverStyle    `json:"cover_style"`
 }
 
 type Status string
@@ -129,6 +144,21 @@ func (r *JobCreateRequest) Validate() error {
 	}
 	if r.SubtitleStyle.OutlineColor == "" {
 		r.SubtitleStyle.OutlineColor = "000000"
+	}
+	// CoverStyle 預設值
+	if r.CoverStyle.Enabled {
+		if r.CoverStyle.Duration <= 0 && !r.CoverStyle.TitleVoice {
+			r.CoverStyle.Duration = 2.0 // 預設 2 秒
+		}
+		if r.CoverStyle.BackgroundType == "" {
+			r.CoverStyle.BackgroundType = "gradient"
+		}
+		if r.CoverStyle.BackgroundType != "gradient" && r.CoverStyle.BackgroundType != "solid" && r.CoverStyle.BackgroundType != "image" {
+			return fmt.Errorf("cover_style.background_type 必須是 gradient、solid 或 image")
+		}
+		if r.CoverStyle.BackgroundType == "image" && r.CoverStyle.BackgroundImage == "" {
+			return fmt.Errorf("cover_style.background_image 在背景類型為 image 時必填")
+		}
 	}
 	return nil
 }
