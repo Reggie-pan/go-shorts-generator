@@ -8,9 +8,9 @@ require (
 	github.com/google/generative-ai-go v0.20.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
-	github.com/lib-x/edgetts v0.3.10
 	github.com/rs/zerolog v1.30.0
 	github.com/spf13/viper v1.16.0
+	github.com/wujunwei928/edge-tts-go v0.0.0-20250315123430-d4675babeb96
 	google.golang.org/api v0.256.0
 )
 
@@ -25,6 +25,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/go-resty/resty/v2 v2.12.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.7 // indirect
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
