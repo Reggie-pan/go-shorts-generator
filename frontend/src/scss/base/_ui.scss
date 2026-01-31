@@ -31,8 +31,16 @@
 
 .card:hover {
   border-color: var(--border-glow);
-  box-shadow: var(--shadow-xl), var(--shadow-glow);
-  transform: translateY(-2px);
+  box-shadow:
+    var(--shadow-xl),
+    var(--shadow-glow),
+    0 0 60px rgba(14, 165, 233, 0.08);
+  transform: translateY(-3px);
+
+  /* 懸停時增強頂部光暈 */
+  &::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  }
 }
 
 /* 標籤樣式 */
@@ -93,9 +101,10 @@ input:focus,
 textarea:focus,
 select:focus {
   border-color: var(--color-primary);
-  border-color: var(--color-primary);
   background-color: var(--bg-input-focus);
-  box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-glow);
+  box-shadow:
+    0 0 0 2px rgba(14, 165, 233, 0.15),
+    0 0 20px rgba(14, 165, 233, 0.1);
   transform: translateY(-1px);
 }
 
@@ -150,8 +159,10 @@ button {
 
 .btn:hover,
 button:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow:
+    var(--shadow-md),
+    0 8px 25px rgba(0, 0, 0, 0.15);
   border-color: var(--text-muted);
 }
 
@@ -174,9 +185,12 @@ button i {
 }
 
 .btn-primary:hover {
-  box-shadow: var(--shadow-glow-strong);
+  box-shadow:
+    var(--shadow-glow-strong),
+    0 10px 30px rgba(14, 165, 233, 0.25);
   filter: brightness(1.1);
   border: none;
+  transform: translateY(-3px);
 }
 
 .btn-danger {
@@ -505,7 +519,9 @@ a:hover {
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-xl), 0 0 50px rgba(14, 165, 233, 0.1);
+  box-shadow:
+    var(--shadow-xl),
+    0 0 50px rgba(14, 165, 233, 0.1);
   animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
 }

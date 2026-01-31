@@ -4,16 +4,27 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    'IBM Plex Sans',
+    'Noto Sans TC',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   background-color: var(--bg-primary);
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.01) 1px, transparent 1px),
     radial-gradient(
       600px circle at var(--cursor-x, 50%) var(--cursor-y, 50%),
-      rgba(14, 165, 233, 0.15),
+      rgba(14, 165, 233, 0.12),
       transparent 40%
     );
-  background-size: 40px 40px, 40px 40px, 100% 100%;
+  background-size:
+    40px 40px,
+    40px 40px,
+    100% 100%;
   background-attachment: fixed;
   color: var(--text-primary);
   line-height: 1.6;
@@ -32,18 +43,20 @@ body {
 
 /* 標題樣式 */
 h1 {
+  font-family: 'DM Sans', 'Noto Sans TC', sans-serif;
   font-size: 3rem;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 var(--spacing-sm) 0;
   background: linear-gradient(135deg, #fff 0%, var(--color-primary-light) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  letter-spacing: -0.03em;
-  text-shadow: 0 0 30px rgba(56, 189, 248, 0.3);
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 40px rgba(56, 189, 248, 0.25);
 }
 
 h2 {
+  font-family: 'DM Sans', 'Noto Sans TC', sans-serif;
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0 0 var(--spacing-lg) 0;
@@ -61,6 +74,7 @@ h2 i {
 }
 
 h3 {
+  font-family: 'DM Sans', 'Noto Sans TC', sans-serif;
   font-size: 1.125rem;
   font-weight: 600;
   margin: var(--spacing-xl) 0 var(--spacing-md) 0;
