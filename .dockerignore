@@ -1,0 +1,15 @@
+.git
+.gitignore
+.dockerignore
+.agent
+node_modules
+backend/vendor
+frontend/dist
+.env
+*.key
+*.pem
+credentials.json
+readme.md
+readme_en.md
+makefile
+docker-compose.yml
