@@ -9,6 +9,7 @@ const MaterialItem = ({
   onUpdate, 
   onRemove, 
   onMove,
+  autoDistribute,
   t
 }) => {
   const handleFileUpload = async (e) => {
@@ -114,8 +115,10 @@ const MaterialItem = ({
           <label><i className="fas fa-clock"></i> {t('seconds')}</label>
           <input 
             type="number" 
-            value={material.duration_sec} 
-            onChange={(e) => onUpdate(index, 'duration_sec', Number(e.target.value))} 
+            value={autoDistribute ? '' : material.duration_sec} 
+            onChange={(e) => onUpdate(index, 'duration_sec', Number(e.target.value))}
+            disabled={autoDistribute}
+            placeholder={autoDistribute ? t('autoDistributePlaceholder') : ''}
           />
         </div>
       </div>

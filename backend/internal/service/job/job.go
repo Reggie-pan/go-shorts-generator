@@ -65,14 +65,16 @@ type CoverStyle struct {
 	TitleStyle      SubtitleStyle `json:"title_style"`      // 標題文字樣式
 }
 
+// JobCreateRequest 建立影片任務的請求參數
 type JobCreateRequest struct {
-	Script        string        `json:"script"`
-	Materials     []Material    `json:"materials"`
-	TTS           TTSSetting    `json:"tts"`
-	Video         VideoSetting  `json:"video"`
-	BGM           BGMSetting    `json:"bgm"`
-	SubtitleStyle SubtitleStyle `json:"subtitle_style"`
-	CoverStyle    CoverStyle    `json:"cover_style"`
+	Script                 string        `json:"script"`                   // 影片腳本內容
+	Materials              []Material    `json:"materials"`                // 素材列表（圖片或影片）
+	TTS                    TTSSetting    `json:"tts"`                      // 語音合成設定
+	Video                  VideoSetting  `json:"video"`                    // 影片輸出設定
+	BGM                    BGMSetting    `json:"bgm"`                      // 背景音樂設定
+	SubtitleStyle          SubtitleStyle `json:"subtitle_style"`           // 字幕樣式設定
+	CoverStyle             CoverStyle    `json:"cover_style"`              // 封面樣式設定
+	AutoDistributeDuration bool          `json:"auto_distribute_duration"` // 是否自動平均分配素材時長（根據語音總長度）
 }
 
 type Status string
@@ -104,9 +106,12 @@ func (r *JobCreateRequest) Validate() error {
 	if len(r.Materials) == 0 {
 		return errors.New("素材至少要有一個")
 	}
-	for _, m := range r.Materials {
-		if m.DurationSec <= 0 {
-			return errors.New("素材時長必須大於 0")
+	// 當 AutoDistributeDuration=true 時，跳過素材時長驗證
+	if !r.AutoDistributeDuration {
+		for _, m := range r.Materials {
+			if m.DurationSec <= 0 {
+				return errors.New("素材時長必須大於 0")
+			}
 		}
 	}
 	if r.SubtitleStyle.Size == 0 {
