@@ -339,7 +339,10 @@
                 "type": { "type": "string", "enum": ["image", "video"], "description": "素材類型" },
                 "source": { "type": "string", "enum": ["upload", "url"], "description": "素材來源" },
                 "path_or_url": { "type": "string", "description": "檔案路徑或 URL" },
-                "duration_sec": { "type": "number", "description": "持續時間 (秒)" },
+                "duration_sec": {
+                  "type": "number",
+                  "description": "持續時間 (秒)，當 auto_distribute_duration=true 時可為 0"
+                },
                 "mute": { "type": "boolean", "description": "是否靜音 (僅 video 有效)" },
                 "volume": {
                   "type": "number",
@@ -398,7 +401,12 @@
             }
           },
           "subtitle_style": { "$ref": "#/components/schemas/SubtitleStyle" },
-          "cover_style": { "$ref": "#/components/schemas/CoverStyle" }
+          "cover_style": { "$ref": "#/components/schemas/CoverStyle" },
+          "auto_distribute_duration": {
+            "type": "boolean",
+            "description": "是否自動平均分配素材時長（根據語音總長度）",
+            "default": false
+          }
         },
         "required": ["script", "materials", "tts", "video"]
       }

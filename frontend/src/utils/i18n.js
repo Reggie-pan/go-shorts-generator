@@ -135,6 +135,9 @@ export const translations = {
     coverGradientColors: '漸層顏色',
     coverSolidColor: '背景顏色',
     coverBackgroundImageUpload: '背景圖片（網址或上傳）',
+    autoDistributeDuration: '自動分配時長',
+    autoDistributeDurationHint: '啟用後，系統將根據語音長度平均分配各素材時長',
+    autoDistributePlaceholder: '自動',
   },
   'zh-CN': {
     appTitle: 'GoShortsGenerator',
@@ -265,6 +268,9 @@ export const translations = {
     coverGradientColors: '渐变颜色',
     coverSolidColor: '背景颜色',
     coverBackgroundImageUpload: '背景图片（网址或上传）',
+    autoDistributeDuration: '自动分配时长',
+    autoDistributeDurationHint: '启用后，系统将根据语音长度平均分配各素材时长',
+    autoDistributePlaceholder: '自动',
   },
   'en': {
     appTitle: 'GoShortsGenerator',
@@ -395,5 +401,8 @@ export const translations = {
     coverGradientColors: 'Gradient Colors',
     coverSolidColor: 'Background Color',
     coverBackgroundImageUpload: 'Background Image (URL or Upload)',
+    autoDistributeDuration: 'Auto Distribute Duration',
+    autoDistributeDurationHint: 'When enabled, duration will be evenly distributed based on voice length',
+    autoDistributePlaceholder: 'Auto',
   }
 }

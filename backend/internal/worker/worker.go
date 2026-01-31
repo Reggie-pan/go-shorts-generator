@@ -181,6 +181,15 @@ func (w *Worker) process(rec *job.Record) error {
 	totalVoiceDur, _ := utils.AudioDurationSeconds(voiceOut)
 	log.Info().Str("job", rec.ID).Float64("duration_sec", totalVoiceDur).Msg("語音合併完成")
 
+	// 自動分配素材時長
+	if rec.Request.AutoDistributeDuration && len(rec.Request.Materials) > 0 {
+		avgDuration := totalVoiceDur / float64(len(rec.Request.Materials))
+		for i := range rec.Request.Materials {
+			rec.Request.Materials[i].DurationSec = avgDuration
+		}
+		log.Info().Str("job", rec.ID).Float64("avg_duration", avgDuration).Int("materials_count", len(rec.Request.Materials)).Msg("自動分配素材時長")
+	}
+
 	var sumDur float64
 	for _, d := range durations {
 		sumDur += d
