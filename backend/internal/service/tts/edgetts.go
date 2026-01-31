@@ -1,7 +1,6 @@
 package tts
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Reggie-pan/go-shorts-generator/internal/utils"
-	"github.com/lib-x/edgetts"
+	"github.com/wujunwei928/edge-tts-go/edge_tts"
 )
 
 // EdgeTTSProvider 實作 Microsoft Edge 免費線上 TTS 服務
@@ -27,37 +26,32 @@ func (e *EdgeTTSProvider) Synthesize(text, voice, locale string, speed, pitch fl
 	rateStr := fmt.Sprintf("%+.0f%%", ratePercent)
 
 	// 將 pitch 轉換為 Edge TTS 的格式 (e.g. "+0Hz", "+50Hz", "-50Hz")
-	// pitch 參數假設為百分比，轉換為 Hz 調整
 	pitchHz := pitch * 50 // 將百分比轉換為 Hz 範圍
 	pitchStr := fmt.Sprintf("%+.0fHz", pitchHz)
 
-	// 建立 Speech 實例
-	speech, err := edgetts.NewSpeech(
-		edgetts.WithVoice(voice),
-		edgetts.WithRate(rateStr),
-		edgetts.WithPitch(pitchStr),
+	// 建立 Communicate 實例
+	c, err := edge_tts.NewCommunicate(text,
+		edge_tts.SetVoice(voice),
+		edge_tts.SetRate(rateStr),
+		edge_tts.SetPitch(pitchStr),
 	)
 	if err != nil {
 		return "", 0, fmt.Errorf("Edge TTS 初始化失敗: %w", err)
 	}
 
-	// 使用 buffer 接收音訊資料
-	var buf bytes.Buffer
-	if err := speech.AddSingleTask(text, &buf); err != nil {
-		return "", 0, fmt.Errorf("Edge TTS 新增任務失敗: %w", err)
+	// 合成音訊
+	data, err := c.Stream()
+	if err != nil {
+		return "", 0, fmt.Errorf("Edge TTS 合成失敗: %w", err)
 	}
 
-	if err := speech.StartTasks(); err != nil {
-		return "", 0, fmt.Errorf("Edge TTS 執行失敗: %w", err)
-	}
-
-	if buf.Len() < 100 {
-		return "", 0, fmt.Errorf("Edge TTS 回傳資料太小 (%d bytes)", buf.Len())
+	if len(data) < 100 {
+		return "", 0, fmt.Errorf("Edge TTS 回傳資料太小 (%d bytes)", len(data))
 	}
 
 	// 寫入暫存檔案 (Edge TTS 輸出為 MP3 格式)
 	tmp := filepath.Join(os.TempDir(), "edge_tts_"+strconv.FormatInt(time.Now().UnixNano(), 10)+".mp3")
-	if err := os.WriteFile(tmp, buf.Bytes(), 0o644); err != nil {
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return "", 0, fmt.Errorf("Edge TTS 寫入檔案失敗: %w", err)
 	}
 
@@ -66,12 +60,7 @@ func (e *EdgeTTSProvider) Synthesize(text, voice, locale string, speed, pitch fl
 }
 
 func (e *EdgeTTSProvider) ListVoices() ([]Voice, error) {
-	speech, err := edgetts.NewSpeech()
-	if err != nil {
-		return nil, fmt.Errorf("Edge TTS 初始化失敗: %w", err)
-	}
-
-	edgeVoices, err := speech.GetVoiceList()
+	edgeVoices, err := edge_tts.ListVoices("")
 	if err != nil {
 		return nil, fmt.Errorf("Edge TTS 取得語音列表失敗: %w", err)
 	}
