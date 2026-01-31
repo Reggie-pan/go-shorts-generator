@@ -1109,12 +1109,17 @@ export default function App() {
                       <span className="progress-text">{j.progress}%</span>
                     </div>
                   </td>
-                  <td className="actions-row">
-                    <button className="btn-secondary" onClick={() => handleCopyTask(j)} title={t('copyParams')}><i className="fas fa-copy"></i></button>
-                    <button className="btn-secondary" onClick={() => handleDuplicateTask(j)} title={t('duplicateTask')}><i className="fas fa-redo"></i></button>
-                    {!finished(j.status) && <button className="btn-secondary" onClick={() => cancel(j.id)} title={t('cancel')}><i className="fas fa-stop"></i></button>}
-                    <button className="btn-danger" onClick={() => remove(j.id)} title={t('delete')}><i className="fas fa-trash"></i></button>
-                    {j.status === 'success' && <a href={`/api/v1/jobs/${j.id}/result`} className="download-link" title={t('download')}><i className="fas fa-download"></i></a>}
+                  <td>
+                    <div className="actions-row">
+                      <button className="btn-secondary" onClick={() => handleCopyTask(j)} title={t('copyParams')}><i className="fas fa-copy"></i></button>
+                      <button className="btn-secondary" onClick={() => handleDuplicateTask(j)} title={t('duplicateTask')}><i className="fas fa-redo"></i></button>
+                      <button className="btn-danger" onClick={() => remove(j.id)} title={t('delete')}><i className="fas fa-trash"></i></button>
+                      {j.status === 'success' ? (
+                        <a href={`/api/v1/jobs/${j.id}/result`} className="btn-download" title={t('download')}><i className="fas fa-download"></i></a>
+                      ) : (
+                        <span className="btn-placeholder"></span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
