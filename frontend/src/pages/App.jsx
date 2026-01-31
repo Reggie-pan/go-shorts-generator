@@ -281,7 +281,8 @@ export default function App() {
     if (form.materials.length === 0) return false
     for (const m of form.materials) {
       if (!m.path || m.path.trim() === '') return false
-      if (m.duration_sec <= 0) return false
+      // 當 auto_distribute_duration=true 時，跳過 duration_sec 驗證
+      if (!form.auto_distribute_duration && m.duration_sec <= 0) return false
     }
 
     // 3. Check TTS
@@ -413,6 +414,8 @@ export default function App() {
           onAdd={addMaterial}
           onRemove={removeMaterial}
           onMove={moveMaterial}
+          autoDistribute={form.auto_distribute_duration}
+          onAutoDistributeChange={(val) => setForm({ ...form, auto_distribute_duration: val })}
           t={t}
         />
 
