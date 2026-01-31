@@ -12,7 +12,7 @@ services:
       - AZURE_TTS_KEY=
       - AZURE_TTS_REGION=
       - GEMINI_API_KEY=
-      - AI_MODEL=gemini-2.0-flash
+      - AI_MODEL=gemini-2.5-flash-lite
     volumes:
       - ./data:/data
       - ./assets:/assets
