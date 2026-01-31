@@ -37,7 +37,7 @@ ENV BGM_PATH=/assets/bgm
 ENV AZURE_TTS_KEY=
 ENV AZURE_TTS_REGION=
 ENV GEMINI_API_KEY=
-ENV AI_MODEL=gemini-2.0-flash
+ENV AI_MODEL=gemini-2.5-flash-lite
 WORKDIR /app
 COPY --from=backend-builder /app/server /app/server
 COPY --from=frontend-builder /app/frontend/dist /app/public
