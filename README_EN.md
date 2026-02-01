@@ -34,14 +34,17 @@
 
 *   **🤖 Fully Automated Workflow**: One-click completion of complex processes from script to final video, with no manual intervention required.
 *   **🧠 AI Powered**:
-    *   Integrates **Google Gemini 2.0 Flash** for precise script segmentation and semantic analysis.
-    *   Supports **Edge TTS** (Free) or **Microsoft Azure TTS** to generate natural, fluid neural network speech.
+    *   Integrates **Google Gemini** (default: `gemini-2.5-flash-lite`) for precise script segmentation and semantic analysis.
+    *   Supports **Edge TTS** (Free), **Azure TTS v1**, and **Azure TTS v2** to generate natural, fluid neural network speech.
 *   **🎨 Highly Customizable**:
-    *   Supports custom subtitle styles (font, color, size).
+    *   Supports custom subtitle styles (font, color, size, outline).
     *   Freely mix background music, transition effects, and background blur processing.
+    *   Multiple camera effects available: `zoom_in`, `zoom_out`, `pan_left`, `pan_right`, `pan_up`, `pan_down`, `diagonal_pan`, `rotate`, `shake`.
 *   **🎬 Title Cover**:
-    *   Supports automatic generation of video opening covers with title text and gradient/blurred backgrounds.
+    *   Supports automatic generation of video opening covers with title text and gradient/blur/image backgrounds.
     *   Optional title voice, with cover duration automatically adjusted based on voice length.
+*   **⏱️ Auto Duration Distribution**:
+    *   When enabled, the system automatically distributes material durations evenly based on total voice duration.
 *   **🐳 Containerized Deployment**: Built on Docker architecture for simple deployment and consistent environments.
 
 ## Tech Stack 🛠️
@@ -49,10 +52,10 @@
 | Area | Technology |
 | :--- | :--- |
 | **Frontend** | React v18, Vite, Sass |
-| **Backend** | Go 1.24 (Gin Framework) |
+| **Backend** | Go 1.24 (Gorilla Mux) |
 | **Data Storage** | Local File System |
 | **Containerization** | Docker, Docker Compose ([Docker Hub](https://hub.docker.com/r/reggiepan/goshortsgenerator)) |
-| **AI Engine** | Google Gemini 2.0 Flash (LLM), Edge TTS / Microsoft Azure TTS |
+| **AI Engine** | Google Gemini (LLM), Edge TTS / Microsoft Azure TTS |
 | **Video Processing** | FFmpeg |
 
 ## Quick Start 🚀
@@ -70,9 +73,14 @@ Modify `docker-compose.yml` and fill in your API Keys:
 
 ```yaml
 environment:
+  - PORT=8080
+  - STORAGE_PATH=/data
+  - BGM_PATH=/assets/bgm
+  - TZ=Asia/Taipei                     # Timezone setting
   - AZURE_TTS_KEY=your_azure_key       # Optional (Not required if using Edge TTS)
   - AZURE_TTS_REGION=your_azure_region # Optional (Not required if using Edge TTS)
   - GEMINI_API_KEY=your_gemini_key     # Required
+  - AI_MODEL=gemini-2.5-flash-lite     # Gemini Model Version
 ```
 
 ### 3. Start Services
@@ -92,15 +100,18 @@ docker-compose up -d --build
 
 The following are descriptions of key environment variables in `docker-compose.yml`:
 
-| Variable Name | Description | Example Value |
-| :--- | :--- | :--- |
-| `PORT` | Application service port | `8080` |
-| `STORAGE_PATH` | Task data storage path | `/data` |
-| `BGM_PATH` | Background music storage path | `/assets/bgm` |
-| `AZURE_TTS_KEY` | Azure TTS Service Key (Optional, not required if using Edge TTS) | `...` |
-| `AZURE_TTS_REGION` | Azure TTS Service Region (Optional, not required if using Edge TTS) | `...` |
-| `GEMINI_API_KEY` | Google Gemini API Key (**Required**) | `...` |
-| `AI_MODEL` | Gemini Model Version | `gemini-2.0-flash` |
+| Variable Name | Description | Required | Example Value |
+| :--- | :--- | :---: | :--- |
+| `PORT` | Application service port | ○ | `8080` |
+| `STORAGE_PATH` | Task data storage path | ○ | `/data` |
+| `BGM_PATH` | Background music storage path | ○ | `/assets/bgm` |
+| `TZ` | Timezone setting | ○ | `Asia/Taipei` |
+| `GEMINI_API_KEY` | Google Gemini API Key | ✓ | `AIza...` |
+| `AI_MODEL` | Gemini Model Version | ○ | `gemini-2.5-flash-lite` |
+| `AZURE_TTS_KEY` | Azure TTS Service Key | ✗ | `...` |
+| `AZURE_TTS_REGION` | Azure TTS Service Region | ✗ | `japaneast` |
+
+> ✓ Required　✗ Optional (Not required if using Edge TTS)　○ Default value available
 
 ## Usage 📖
 
@@ -111,9 +122,11 @@ The following are descriptions of key environment variables in `docker-compose.y
     *   Enter your video script on the Web interface.
 
 3.  **Configure Settings** ⚙️
-    *   Select **TTS Voice** (supports multiple languages).
-    *   Set **Subtitle Style** (font, color, size).
-    *   Adjust **Video Settings** (resolution, background blur, transition effects).
+    *   Select **TTS Voice Provider** (`edge_tts`, `azure_v1`, `azure_v2`).
+    *   Set **Subtitle Style** (font, color, size, outline).
+    *   Adjust **Video Settings** (resolution, fps, background blur, transition effects).
+    *   Optionally enable **Auto Duration Distribution**.
+    *   Configure **Cover Style** (title, background type, title voice generation).
 
 4.  **Submit Task** ▶️
     *   Click "Create Task" and the system will automatically start processing.
@@ -124,8 +137,6 @@ The following are descriptions of key environment variables in `docker-compose.y
 ## API Docs 📄
 
 This project provides a complete RESTful API for developers to extend or integrate:
-
-*   **Swagger UI**: [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
 
 <img src="assets/images/api_screenshot.png" alt="API Screenshot">
 
