@@ -34,14 +34,17 @@
 
 *   **🤖 全自動化流程**：一鍵完成從腳本到成片的複雜工序，無需人工干預。
 *   **🧠 AI 智能賦能**：
-    *   整合 **Google Gemini 2.0 Flash** 進行精準腳本斷句與語意分析。
-    *   支援 **Edge TTS**（免費）或 **Microsoft Azure TTS** 生成自然流暢的神經網路語音。
+    *   整合 **Google Gemini** (預設使用 `gemini-2.5-flash-lite`) 進行精準腳本斷句與語意分析。
+    *   支援 **Edge TTS**（免費）、**Azure TTS v1** 及 **Azure TTS v2** 生成自然流暢的神經網路語音。
 *   **🎨 高度客製化**：
-    *   支援自訂字幕樣式（字體、顏色、大小）。
+    *   支援自訂字幕樣式（字體、顏色、大小、描邊）。
     *   自由搭配背景音樂、轉場效果與背景模糊處理。
+    *   提供多種運鏡特效：`zoom_in`、`zoom_out`、`pan_left`、`pan_right`、`pan_up`、`pan_down`、`diagonal_pan`、`rotate`、`shake`。
 *   **🎬 標題封面**：
-    *   支援自動生成影片開場封面，含標題文字與漸層/模糊背景。
+    *   支援自動生成影片開場封面，含標題文字與漸層/模糊/圖片背景。
     *   可選標題語音，封面時長根據語音自動調整。
+*   **⏱️ 素材時長自動分配**：
+    *   啟用後系統將根據語音總長度自動平均分配各素材時長。
 *   **🐳 容器化部署**：基於 Docker 架構，部署簡單，確保環境一致性。
 
 ## 技術棧 🛠️
@@ -49,10 +52,10 @@
 | 領域 | 技術 |
 | :--- | :--- |
 | **前端** | React v18, Vite, Sass |
-| **後端** | Go 1.24 (Gin Framework) |
+| **後端** | Go 1.24 (Gorilla Mux) |
 | **資料儲存** | Local File System |
 | **容器化** | Docker, Docker Compose ([Docker Hub](https://hub.docker.com/r/reggiepan/goshortsgenerator)) |
-| **AI 引擎** | Google Gemini 2.0 Flash (LLM), Edge TTS / Microsoft Azure TTS |
+| **AI 引擎** | Google Gemini (LLM), Edge TTS / Microsoft Azure TTS |
 | **影片處理** | FFmpeg |
 
 ## 快速開始 🚀
@@ -70,9 +73,14 @@ cd go-shorts-generator
 
 ```yaml
 environment:
+  - PORT=8080
+  - STORAGE_PATH=/data
+  - BGM_PATH=/assets/bgm
+  - TZ=Asia/Taipei                     # 時區設定
   - AZURE_TTS_KEY=your_azure_key       # 可選 (若使用 Edge TTS 則不需要)
   - AZURE_TTS_REGION=your_azure_region # 可選 (若使用 Edge TTS 則不需要)
   - GEMINI_API_KEY=your_gemini_key     # 必填
+  - AI_MODEL=gemini-2.5-flash-lite     # Gemini 模型版本
 ```
 
 ### 3. 啟動服務
@@ -92,15 +100,18 @@ docker-compose up -d --build
 
 以下是 `docker-compose.yml` 中的關鍵環境變數說明：
 
-| 變數名稱 | 說明 | 範例值 |
-| :--- | :--- | :--- |
-| `PORT` | 應用程式服務埠號 | `8080` |
-| `STORAGE_PATH` | 任務資料儲存路徑 | `/data` |
-| `BGM_PATH` | 背景音樂儲存路徑 | `/assets/bgm` |
-| `AZURE_TTS_KEY` | Azure TTS 服務金鑰 (可選，若使用 Edge TTS 則不需要) | `...` |
-| `AZURE_TTS_REGION` | Azure TTS 服務區域 (可選，若使用 Edge TTS 則不需要) | `...` |
-| `GEMINI_API_KEY` | Google Gemini API 金鑰 (**必填**) | `...` |
-| `AI_MODEL` | 使用的 Gemini 模型版本 | `gemini-2.0-flash` |
+| 變數名稱 | 說明 | 必填 | 範例值 |
+| :--- | :--- | :---: | :--- |
+| `PORT` | 應用程式服務埠號 | ○ | `8080` |
+| `STORAGE_PATH` | 任務資料儲存路徑 | ○ | `/data` |
+| `BGM_PATH` | 背景音樂儲存路徑 | ○ | `/assets/bgm` |
+| `TZ` | 時區設定 | ○ | `Asia/Taipei` |
+| `GEMINI_API_KEY` | Google Gemini API 金鑰 | ✓ | `AIza...` |
+| `AI_MODEL` | 使用的 Gemini 模型版本 | ○ | `gemini-2.5-flash-lite` |
+| `AZURE_TTS_KEY` | Azure TTS 服務金鑰 | ✗ | `...` |
+| `AZURE_TTS_REGION` | Azure TTS 服務區域 | ✗ | `japaneast` |
+
+> ✓ 必填　✗ 可選（若使用 Edge TTS 則不需要）　○ 預設值可用
 
 ## 使用說明 📖
 
@@ -111,9 +122,11 @@ docker-compose up -d --build
     *   在 Web 介面上輸入您的影片腳本。
 
 3.  **設定參數** ⚙️
-    *   選擇 **TTS 語音** (支援多國語言)。
-    *   設定 **字幕樣式** (字體、顏色、大小)。
-    *   調整 **影片設定** (解析度、背景模糊、轉場效果)。
+    *   選擇 **TTS 語音提供者** (`edge_tts`、`azure_v1`、`azure_v2`)。
+    *   設定 **字幕樣式** (字體、顏色、大小、描邊)。
+    *   調整 **影片設定** (解析度、fps、背景模糊、轉場效果)。
+    *   可選擇是否啟用 **素材時長自動分配**。
+    *   設定 **封面樣式** (標題、背景類型、是否生成標題語音)。
 
 4.  **提交任務** ▶️
     *   點擊「建立任務」，系統將自動開始處理。
@@ -124,8 +137,6 @@ docker-compose up -d --build
 ## API 文件 📄
 
 本專案提供完整的 RESTful API，方便開發者進行二次開發或整合：
-
-*   **Swagger UI**: [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
 
 <img src="assets/images/api_screenshot.png" alt="API Screenshot">
 
