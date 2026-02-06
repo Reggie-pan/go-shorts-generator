@@ -379,16 +379,16 @@ func (w *Worker) process(rec *job.Record) error {
 		// 3 inputs: VideoAudio, BGM, TTS
 		// 使用 duration=first，以第一個輸入 (video_audio) 為基準
 		// TTS 音量放大補償 amix 的衰減
-		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[bgm];[2:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo,volume=3.0[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][bgm][tts]amix=inputs=3:duration=first[aout]`,
-			videoFilter, finalDuration, rec.Request.BGM.Volume, finalDuration, voiceSeconds, finalDuration)
+		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[bgm];[2:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=3.0,apad=whole_dur=%.3f[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][bgm][tts]amix=inputs=3:duration=first[aout]`,
+			videoFilter, finalDuration, rec.Request.BGM.Volume, finalDuration, finalDuration, finalDuration)
 
 		args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-shortest", output}
 	} else {
 		// 2 inputs: VideoAudio, TTS
 		// 使用 duration=first，以 video_audio 為基準
 		// TTS 音量放大補償 amix 的衰減
-		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo,volume=2.0[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][tts]amix=inputs=2:duration=first[aout]`,
-			videoFilter, finalDuration, voiceSeconds, finalDuration)
+		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=2.0,apad=whole_dur=%.3f[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][tts]amix=inputs=2:duration=first[aout]`,
+			videoFilter, finalDuration, finalDuration, finalDuration)
 
 		args = []string{"-y", "-i", videoPath, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-shortest", output}
 	}
