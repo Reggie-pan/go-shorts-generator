@@ -182,12 +182,15 @@ func (w *Worker) process(rec *job.Record) error {
 	log.Info().Str("job", rec.ID).Float64("duration_sec", totalVoiceDur).Msg("語音合併完成")
 
 	// 自動分配素材時長
+	// 注意：BuildVideoTimeline 使用 needDuration + 1000 (語音長度 + 1 秒) 作為 hardLimit
+	// 因此自動分配時也應該基於 totalVoiceDur + 1.0,確保素材能完整覆蓋影片時間軸
 	if rec.Request.AutoDistributeDuration && len(rec.Request.Materials) > 0 {
-		avgDuration := totalVoiceDur / float64(len(rec.Request.Materials))
+		targetDuration := totalVoiceDur + 1.0 // 與 BuildVideoTimeline 的 hardLimit 一致
+		avgDuration := targetDuration / float64(len(rec.Request.Materials))
 		for i := range rec.Request.Materials {
 			rec.Request.Materials[i].DurationSec = avgDuration
 		}
-		log.Info().Str("job", rec.ID).Float64("avg_duration", avgDuration).Int("materials_count", len(rec.Request.Materials)).Msg("自動分配素材時長")
+		log.Info().Str("job", rec.ID).Float64("target_duration", targetDuration).Float64("avg_duration", avgDuration).Int("materials_count", len(rec.Request.Materials)).Msg("自動分配素材時長")
 	}
 
 	var sumDur float64
@@ -382,7 +385,7 @@ func (w *Worker) process(rec *job.Record) error {
 		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[bgm];[2:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=3.0,apad=whole_dur=%.3f[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][bgm][tts]amix=inputs=3:duration=first[aout]`,
 			videoFilter, finalDuration, rec.Request.BGM.Volume, finalDuration, finalDuration, finalDuration)
 
-		args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-shortest", output}
+		args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output}
 	} else {
 		// 2 inputs: VideoAudio, TTS
 		// 使用 duration=first，以 video_audio 為基準
@@ -390,7 +393,7 @@ func (w *Worker) process(rec *job.Record) error {
 		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=2.0,apad=whole_dur=%.3f[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][tts]amix=inputs=2:duration=first[aout]`,
 			videoFilter, finalDuration, finalDuration, finalDuration)
 
-		args = []string{"-y", "-i", videoPath, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-shortest", output}
+		args = []string{"-y", "-i", videoPath, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output}
 	}
 	if out, err := utils.RunCmdTimeout(5*time.Minute, "ffmpeg", args...); err != nil {
 		return fmt.Errorf("合成最終影片失敗: %v / %s", err, out)
