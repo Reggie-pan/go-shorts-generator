@@ -65,6 +65,13 @@ type CoverStyle struct {
 	TitleStyle      SubtitleStyle `json:"title_style"`      // 標題文字樣式
 }
 
+// ProgressBar 動態圖片進度條設定
+type ProgressBar struct {
+	Enabled   bool   `json:"enabled"`    // 是否啟用動態圖片進度條
+	ImagePath string `json:"image_path"` // 圖片路徑（上傳後的本地路徑）或 URL
+	Direction string `json:"direction"`  // 移動方向：top, bottom, left, right
+}
+
 // JobCreateRequest 建立影片任務的請求參數
 type JobCreateRequest struct {
 	Script                 string        `json:"script"`                   // 影片腳本內容
@@ -74,6 +81,7 @@ type JobCreateRequest struct {
 	BGM                    BGMSetting    `json:"bgm"`                      // 背景音樂設定
 	SubtitleStyle          SubtitleStyle `json:"subtitle_style"`           // 字幕樣式設定
 	CoverStyle             CoverStyle    `json:"cover_style"`              // 封面樣式設定
+	ProgressBar            ProgressBar   `json:"progress_bar"`             // 動態圖片進度條設定
 	AutoDistributeDuration bool          `json:"auto_distribute_duration"` // 是否自動平均分配素材時長（根據語音總長度）
 }
 
@@ -163,6 +171,19 @@ func (r *JobCreateRequest) Validate() error {
 		}
 		if r.CoverStyle.BackgroundType == "image" && r.CoverStyle.BackgroundImage == "" {
 			return fmt.Errorf("cover_style.background_image 在背景類型為 image 時必填")
+		}
+	}
+	// ProgressBar 驗證
+	if r.ProgressBar.Enabled {
+		if strings.TrimSpace(r.ProgressBar.ImagePath) == "" {
+			return errors.New("啟用進度條時，圖片路徑不可為空")
+		}
+		if r.ProgressBar.Direction == "" {
+			r.ProgressBar.Direction = "bottom"
+		}
+		validDirections := map[string]bool{"top": true, "bottom": true, "left": true, "right": true}
+		if !validDirections[r.ProgressBar.Direction] {
+			return fmt.Errorf("無效的進度條方向: %s", r.ProgressBar.Direction)
 		}
 	}
 	return nil

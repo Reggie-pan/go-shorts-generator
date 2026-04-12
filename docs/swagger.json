@@ -1,4 +1,4 @@
-﻿{
+{
   "openapi": "3.0.1",
   "info": {
     "title": "GoShortsGenerator API",
@@ -326,6 +326,20 @@
           "background_image": { "type": "string", "description": "背景圖片路徑或 URL（當 background_type=image）" }
         }
       },
+      "ProgressBar": {
+        "type": "object",
+        "description": "動態圖片進度條設定",
+        "properties": {
+          "enabled": { "type": "boolean", "description": "是否啟用動態圖片進度條", "default": false },
+          "image_path": { "type": "string", "description": "圖片路徑（上傳後的本地路徑）或 URL，支援 PNG、GIF、WebP" },
+          "direction": {
+            "type": "string",
+            "enum": ["top", "bottom", "left", "right"],
+            "description": "移動方向：top（上方邊緣，左→右）、bottom（下方邊緣，左→右）、left（左側邊緣，上→下）、right（右側邊緣，上→下）",
+            "default": "bottom"
+          }
+        }
+      },
       "JobCreateRequest": {
         "type": "object",
         "properties": {
@@ -402,6 +416,7 @@
           },
           "subtitle_style": { "$ref": "#/components/schemas/SubtitleStyle" },
           "cover_style": { "$ref": "#/components/schemas/CoverStyle" },
+          "progress_bar": { "$ref": "#/components/schemas/ProgressBar" },
           "auto_distribute_duration": {
             "type": "boolean",
             "description": "是否自動平均分配素材時長（根據語音總長度）",
