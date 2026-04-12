@@ -14,7 +14,8 @@ const defaultRequest = {
   video: { resolution: '1080x1920', fps: 30, speed: 1, background: '000000' },
   bgm: { source: 'preset', path: 'random', volume: 0.2 },
   subtitle_style: { font: 'Noto Sans TC', size: 16, color: 'FFFFFF', y_offset: 70, max_line_width: 16, outline_width: 0.1, outline_color: '000000' },
-  cover_style: { enabled: false, title: '', title_voice: false, duration: 2, extend_duration: 0, background_type: 'gradient', background_blur: true, gradient_colors: ['FF6B9D', 'FFE66D', '4ECDC4'], background_image: '', title_style: { font: 'Noto Sans TC', size: 24, color: 'FFFFFF', outline_width: 2, outline_color: '000000' } }
+  cover_style: { enabled: false, title: '', title_voice: false, duration: 2, extend_duration: 0, background_type: 'gradient', background_blur: true, gradient_colors: ['FF6B9D', 'FFE66D', '4ECDC4'], background_image: '', title_style: { font: 'Noto Sans TC', size: 24, color: 'FFFFFF', outline_width: 2, outline_color: '000000' } },
+  progress_bar: { enabled: false, image_path: '', direction: 'bottom' }
 }
 
 export default function App() {
@@ -291,6 +292,11 @@ export default function App() {
     // 4. Check BGM
     if (form.bgm.source !== 'none') {
       if (!form.bgm.path || form.bgm.path.trim() === '') return false
+    }
+
+    // 5. Check Progress Bar
+    if (form.progress_bar?.enabled) {
+      if (!form.progress_bar.image_path || form.progress_bar.image_path.trim() === '') return false
     }
 
     return true
@@ -1004,6 +1010,81 @@ export default function App() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        <h3><i className="fas fa-tasks"></i> {t('progressBarSettings')}</h3>
+        <div className="grid">
+          <div>
+            <label className="checkbox-label">
+              <input 
+                type="checkbox" 
+                checked={form.progress_bar?.enabled || false} 
+                onChange={(e) => setForm({ ...form, progress_bar: { ...form.progress_bar, enabled: e.target.checked } })} 
+              />
+              {t('enableProgressBar')}
+            </label>
+          </div>
+        </div>
+
+        {form.progress_bar?.enabled && (
+          <div className="cover-settings-container" style={{ 
+            marginTop: '16px', 
+            padding: '16px', 
+            border: '1px solid var(--border-primary)', 
+            borderRadius: '8px',
+            background: 'var(--bg-secondary)'
+          }}>
+            <div className="grid">
+              <div>
+                <label>{t('progressBarDirection')}</label>
+                <SearchableSelect 
+                  options={[
+                    { label: t('directionTop'), value: 'top' },
+                    { label: t('directionBottom'), value: 'bottom' },
+                    { label: t('directionLeft'), value: 'left' },
+                    { label: t('directionRight'), value: 'right' }
+                  ]}
+                  value={form.progress_bar?.direction || 'bottom'}
+                  onChange={(val) => setForm({ ...form, progress_bar: { ...form.progress_bar, direction: val } })}
+                  searchable={false}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: '12px' }}>
+              <label>{t('progressBarImage')}</label>
+              <div className="bgm-input-group">
+                <input 
+                  type="text"
+                  value={form.progress_bar?.image_path || ''} 
+                  onChange={(e) => setForm({ ...form, progress_bar: { ...form.progress_bar, image_path: e.target.value } })}
+                  placeholder={t('urlPlaceholder')}
+                />
+                <label className="btn btn-secondary btn-file-select">
+                  <i className="fas fa-cloud-upload-alt"></i>
+                  <span>{t('selectFile')}</span>
+                  <input 
+                    type="file" 
+                    accept="image/png,image/gif,image/webp"
+                    style={{ display: 'none' }} 
+                    onChange={async (e) => {
+                      if (e.target.files[0]) {
+                        try {
+                          const res = await api.uploadFile(e.target.files[0])
+                          setForm({ ...form, progress_bar: { ...form.progress_bar, image_path: res.path } })
+                        } catch (err) {
+                          addToast('error', t('uploadFail'))
+                        }
+                      }
+                    }} 
+                  />
+                </label>
+              </div>
+              <div className="hint-text" style={{ marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <i className="fas fa-info-circle"></i> {t('progressBarImageHint')}
+              </div>
             </div>
           </div>
         )}

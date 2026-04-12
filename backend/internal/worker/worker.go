@@ -334,6 +334,31 @@ func (w *Worker) process(rec *job.Record) error {
 		}
 	}
 
+	// 10. 準備進度條圖片
+	var progressBarInput string
+	if rec.Request.ProgressBar.Enabled {
+		imgExt := filepath.Ext(rec.Request.ProgressBar.ImagePath)
+		if imgExt == "" {
+			imgExt = ".png"
+		}
+		progressBarPath := filepath.Join(base, "progress_bar"+imgExt)
+		if strings.HasPrefix(rec.Request.ProgressBar.ImagePath, "http://") || strings.HasPrefix(rec.Request.ProgressBar.ImagePath, "https://") {
+			// URL: 下載
+			if _, err := utils.RunCmd("curl", "-L", "-o", progressBarPath, rec.Request.ProgressBar.ImagePath); err != nil {
+				log.Warn().Err(err).Msg("下載進度條圖片失敗")
+			} else {
+				progressBarInput = progressBarPath
+			}
+		} else {
+			// 本地路徑: 複製
+			if err := utils.CopyFile(rec.Request.ProgressBar.ImagePath, progressBarPath); err != nil {
+				log.Warn().Err(err).Msg("複製進度條圖片失敗")
+			} else {
+				progressBarInput = progressBarPath
+			}
+		}
+	}
+
 	output := filepath.Join(base, "output.mp4")
 
 	subPathFF := filepath.ToSlash(subPath)
@@ -379,21 +404,97 @@ func (w *Worker) process(rec *job.Record) error {
 	}
 
 	if bgmInput != "" {
-		// 3 inputs: VideoAudio, BGM, TTS
-		// 使用 duration=first，以第一個輸入 (video_audio) 為基準
-		// TTS 音量放大補償 amix 的衰減
-		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[bgm];[2:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=3.0,apad=whole_dur=%.3f[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][bgm][tts]amix=inputs=3:duration=first[aout]`,
-			videoFilter, finalDuration, rec.Request.BGM.Volume, finalDuration, finalDuration, finalDuration)
+		// Inputs: 
+		// 0: video, 1: bgm, 2: voice
+		// 如果有進度條圖片，則是 0: video, 1: pbar, 2: bgm, 3: voice
+		bgmIdx := "1:a"
+		voiceIdx := "2:a"
+		videoAudioIdx := "0:a"
+		
+		var pbarFilter string
+		if progressBarInput != "" {
+			loopOpt1, loopOpt2 := "-loop", "1"
+			if strings.ToLower(filepath.Ext(progressBarInput)) == ".gif" {
+				loopOpt1, loopOpt2 = "-ignore_loop", "0"
+			}
+			// 插入進度條圖片輸入
+			args = []string{"-y", "-i", videoPath, loopOpt1, loopOpt2, "-i", progressBarInput, "-i", bgmInput, "-i", voiceOut}
+			bgmIdx = "2:a"
+			voiceIdx = "3:a"
+			
+			// 座標計算
+			xExpr, yExpr := "0", "0"
+			dir := rec.Request.ProgressBar.Direction
+			dur := finalDuration
+			switch dir {
+			case "top":
+				xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
+				yExpr = "0"
+			case "bottom":
+				xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
+				yExpr = "H-h"
+			case "left":
+				xExpr = "0"
+				yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
+			case "right":
+				xExpr = "W-w"
+				yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
+			}
+			pbarFilter = fmt.Sprintf("[0:v]%s[vsub];[1:v]format=rgba,scale=150:150:force_original_aspect_ratio=decrease[pbar];[vsub][pbar]overlay=%s:%s:shortest=1", videoFilter, xExpr, yExpr)
+			// 已經在 pbarFilter 處理了
+		} else {
+			args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut}
+			pbarFilter = fmt.Sprintf("[0:v]%s", videoFilter)
+		}
 
-		args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output}
+		filter := fmt.Sprintf(`%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[%s]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[bgm];[%s]aformat=sample_rates=44100:channel_layouts=stereo,volume=3.0,apad=whole_dur=%.3f[tts];[%s]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][bgm][tts]amix=inputs=3:duration=first[aout]`,
+			pbarFilter, finalDuration, bgmIdx, rec.Request.BGM.Volume, finalDuration, voiceIdx, finalDuration, videoAudioIdx, finalDuration)
+
+		args = append(args, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output)
 	} else {
-		// 2 inputs: VideoAudio, TTS
-		// 使用 duration=first，以 video_audio 為基準
-		// TTS 音量放大補償 amix 的衰減
-		filter := fmt.Sprintf(`[0:v]%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[1:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=2.0,apad=whole_dur=%.3f[tts];[0:a]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][tts]amix=inputs=2:duration=first[aout]`,
-			videoFilter, finalDuration, finalDuration, finalDuration)
+		// Inputs:
+		// 0: video, 1: voice
+		// 如果有進度條圖片，則是 0: video, 1: pbar, 2: voice
+		voiceIdx := "1:a"
+		videoAudioIdx := "0:a"
+		
+		var pbarFilter string
+		if progressBarInput != "" {
+			loopOpt1, loopOpt2 := "-loop", "1"
+			if strings.ToLower(filepath.Ext(progressBarInput)) == ".gif" {
+				loopOpt1, loopOpt2 = "-ignore_loop", "0"
+			}
+			args = []string{"-y", "-i", videoPath, loopOpt1, loopOpt2, "-i", progressBarInput, "-i", voiceOut}
+			voiceIdx = "2:a"
+			
+			// 座標計算
+			xExpr, yExpr := "0", "0"
+			dir := rec.Request.ProgressBar.Direction
+			dur := finalDuration
+			switch dir {
+			case "top":
+				xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
+				yExpr = "0"
+			case "bottom":
+				xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
+				yExpr = "H-h"
+			case "left":
+				xExpr = "0"
+				yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
+			case "right":
+				xExpr = "W-w"
+				yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
+			}
+			pbarFilter = fmt.Sprintf("[0:v]%s[vsub];[1:v]format=rgba,scale=150:150:force_original_aspect_ratio=decrease[pbar];[vsub][pbar]overlay=%s:%s:shortest=1", videoFilter, xExpr, yExpr)
+		} else {
+			args = []string{"-y", "-i", videoPath, "-i", voiceOut}
+			pbarFilter = fmt.Sprintf("[0:v]%s", videoFilter)
+		}
 
-		args = []string{"-y", "-i", videoPath, "-i", voiceOut, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output}
+		filter := fmt.Sprintf(`%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[%s]aformat=sample_rates=44100:channel_layouts=stereo,volume=2.0,apad=whole_dur=%.3f[tts];[%s]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][tts]amix=inputs=2:duration=first[aout]`,
+			pbarFilter, finalDuration, voiceIdx, finalDuration, videoAudioIdx, finalDuration)
+
+		args = append(args, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output)
 	}
 	if out, err := utils.RunCmdTimeout(5*time.Minute, "ffmpeg", args...); err != nil {
 		return fmt.Errorf("合成最終影片失敗: %v / %s", err, out)
