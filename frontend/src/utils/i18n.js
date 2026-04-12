@@ -138,6 +138,16 @@ export const translations = {
     autoDistributeDuration: '自動分配時長',
     autoDistributeDurationHint: '啟用後，系統將根據語音長度平均分配各素材時長',
     autoDistributePlaceholder: '自動',
+    // 進度條設定
+    progressBarSettings: '動態圖片進度條',
+    enableProgressBar: '啟用動態圖片進度條',
+    progressBarImage: '進度條圖片',
+    progressBarImageHint: '支援 PNG（透明）、GIF（動畫）、WebP 格式',
+    progressBarDirection: '移動方向',
+    directionTop: '上方邊緣（左→右）',
+    directionBottom: '下方邊緣（左→右）',
+    directionLeft: '左側邊緣（上→下）',
+    directionRight: '右側邊緣（上→下）',
   },
   'zh-CN': {
     appTitle: 'GoShortsGenerator',
@@ -271,6 +281,16 @@ export const translations = {
     autoDistributeDuration: '自动分配时长',
     autoDistributeDurationHint: '启用后，系统将根据语音长度平均分配各素材时长',
     autoDistributePlaceholder: '自动',
+    // 进度条设置
+    progressBarSettings: '动态图片进度条',
+    enableProgressBar: '启用动态图片进度条',
+    progressBarImage: '进度条图片',
+    progressBarImageHint: '支持 PNG（透明）、GIF（动画）、WebP 格式',
+    progressBarDirection: '移动方向',
+    directionTop: '上方边缘（左→右）',
+    directionBottom: '下方边缘（左→右）',
+    directionLeft: '左侧边缘（上→下）',
+    directionRight: '右侧边缘（上→下）',
   },
   'en': {
     appTitle: 'GoShortsGenerator',
@@ -404,5 +424,15 @@ export const translations = {
     autoDistributeDuration: 'Auto Distribute Duration',
     autoDistributeDurationHint: 'When enabled, duration will be evenly distributed based on voice length',
     autoDistributePlaceholder: 'Auto',
+    // Progress Bar Settings
+    progressBarSettings: 'Progress Bar Image',
+    enableProgressBar: 'Enable Progress Bar Image',
+    progressBarImage: 'Progress Bar Image',
+    progressBarImageHint: 'Supports PNG (transparent), GIF (animated), WebP',
+    progressBarDirection: 'Direction',
+    directionTop: 'Top Edge (Left→Right)',
+    directionBottom: 'Bottom Edge (Left→Right)',
+    directionLeft: 'Left Edge (Top→Bottom)',
+    directionRight: 'Right Edge (Top→Bottom)',
   }
 }
