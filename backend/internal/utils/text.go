@@ -115,29 +115,6 @@ type SubtitleSegment struct {
 	End   int // ms
 }
 
-// BuildTimeline 依 TTS 時長與字幕行，計算時間軸，並校正總時長
-func BuildTimeline(lines []string, durations []int) []SubtitleSegment {
-	segments := []SubtitleSegment{}
-	var cursor int
-	for i, line := range lines {
-		dur := 0
-		if i < len(durations) {
-			dur = durations[i]
-		}
-		if dur == 0 {
-			dur = 1000
-		}
-		seg := SubtitleSegment{
-			Text:  line,
-			Start: cursor,
-			End:   cursor + dur,
-		}
-		segments = append(segments, seg)
-		cursor += dur
-	}
-	return segments
-}
-
 // BuildTimelineFloat 依 TTS 時長 (秒) 與字幕行，計算時間軸 (ms)，使用 float64 減少累積誤差
 func BuildTimelineFloat(lines []string, durations []float64) []SubtitleSegment {
 	segments := []SubtitleSegment{}
