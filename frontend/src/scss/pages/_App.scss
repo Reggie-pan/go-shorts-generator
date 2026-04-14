@@ -695,10 +695,12 @@
   flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
+  min-width: 172px; /* 統一 4 個按鈕槽位的寬度 */
 
   /* 統一按鈕尺寸 */
   .btn-secondary,
   .btn-danger,
+  .btn-warning,
   .btn-download,
   .btn-placeholder {
     width: 36px;
