@@ -211,13 +211,23 @@ func (h *Handlers) ListBGM(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Swagger 提供 OpenAPI JSON
+// Swagger 提供 OpenAPI JSON（支援多語言）
 func (h *Handlers) Swagger(w http.ResponseWriter, r *http.Request) {
+	// 根據 lang 參數決定檔名
+	lang := r.URL.Query().Get("lang")
+	filename := "swagger.json" // 預設繁體中文
+	switch lang {
+	case "zh-CN":
+		filename = "swagger_cn.json"
+	case "en":
+		filename = "swagger_en.json"
+	}
+
 	// 嘗試多個可能的路徑
 	possiblePaths := []string{
-		filepath.Join("docs", "swagger.json"),
-		filepath.Join("/app", "docs", "swagger.json"),
-		filepath.Join("/app/docs", "swagger.json"),
+		filepath.Join("docs", filename),
+		filepath.Join("/app", "docs", filename),
+		filepath.Join("/app/docs", filename),
 	}
 
 	var f *os.File
@@ -226,6 +236,21 @@ func (h *Handlers) Swagger(w http.ResponseWriter, r *http.Request) {
 		f, err = os.Open(path)
 		if err == nil {
 			break
+		}
+	}
+
+	// 若找不到對應語言版本，回退至預設
+	if f == nil && filename != "swagger.json" {
+		fallbackPaths := []string{
+			filepath.Join("docs", "swagger.json"),
+			filepath.Join("/app", "docs", "swagger.json"),
+			filepath.Join("/app/docs", "swagger.json"),
+		}
+		for _, path := range fallbackPaths {
+			f, err = os.Open(path)
+			if err == nil {
+				break
+			}
 		}
 	}
 
