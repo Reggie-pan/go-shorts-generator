@@ -6,10 +6,10 @@ RUN go mod download
 COPY backend/. .
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/server ./cmd/server
 
-FROM node:18-bullseye AS frontend-builder
+FROM node:20-bullseye AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm install -g npm@latest && npm install
 COPY frontend/. .
 RUN npm run build
 
