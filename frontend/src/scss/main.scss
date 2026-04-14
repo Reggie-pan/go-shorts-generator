@@ -1,8 +1,8 @@
-@import 'base/variables';
-@import 'base/base';
-@import 'base/ui';
+@use 'base/variables';
+@use 'base/base';
+@use 'base/ui';
 
-@import 'components/MaterialItem';
-@import 'components/MaterialList';
+@use 'components/MaterialItem';
+@use 'components/MaterialList';
 
-@import 'pages/App';
+@use 'pages/App';
