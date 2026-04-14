@@ -396,7 +396,7 @@ export default function App() {
           </div>
           <div className="header-divider"></div>
           <div className="header-group">
-            <a href="/swagger.html" target="_blank" rel="noreferrer" className="btn-text">
+            <a href={`/swagger.html?lang=${lang}`} target="_blank" rel="noreferrer" className="btn-text">
               <i className="fas fa-file-code"></i> <span>{t('apiDocs')}</span>
             </a>
             <button 

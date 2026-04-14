@@ -1,0 +1,430 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "GoShortsGenerator API",
+    "version": "1.0.0",
+    "description": "Short Video Auto-Generation Task API"
+  },
+  "tags": [
+    { "name": "Jobs", "description": "Job management APIs" },
+    { "name": "Resources", "description": "System resources (fonts, BGM)" },
+    { "name": "Utilities", "description": "Utilities (upload, preview, cleanup)" }
+  ],
+  "paths": {
+    "/api/v1/jobs": {
+      "post": {
+        "tags": ["Jobs"],
+        "summary": "Create a job",
+        "description": "Create a new video generation job. Requires script, materials, TTS settings, etc.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/JobCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "id": { "type": "string", "example": "550e8400-e29b-41d4-a716-446655440000" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Jobs"],
+        "summary": "List jobs",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Items per page" }
+        ],
+        "responses": { "200": { "description": "List", "content": { "application/json": {} } } }
+      },
+      "delete": {
+        "tags": ["Jobs"],
+        "summary": "Delete all jobs",
+        "description": "Delete all jobs and their associated files (irreversible)",
+        "responses": {
+          "200": {
+            "description": "All jobs deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "deleted_all" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{id}": {
+      "get": {
+        "tags": ["Jobs"],
+        "summary": "Get job status",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Job ID" }
+        ],
+        "responses": { "200": { "description": "Status", "content": { "application/json": {} } } }
+      },
+      "delete": {
+        "tags": ["Jobs"],
+        "summary": "Delete a job",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Job ID" }
+        ],
+        "responses": { "200": { "description": "Deleted" } }
+      }
+    },
+    "/api/v1/jobs/{id}/result": {
+      "get": {
+        "tags": ["Jobs"],
+        "summary": "Download video",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Job ID" }
+        ],
+        "responses": { "200": { "description": "MP4", "content": { "video/mp4": {} } } }
+      }
+    },
+    "/api/v1/jobs/{id}/cancel": {
+      "post": {
+        "tags": ["Jobs"],
+        "summary": "Cancel a job",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Job ID" }
+        ],
+        "responses": { "200": { "description": "Cancelled" } }
+      }
+    },
+    "/api/v1/presets/bgm": {
+      "get": {
+        "tags": ["Resources"],
+        "summary": "List preset BGM",
+        "responses": { "200": { "description": "List", "content": { "application/json": {} } } }
+      }
+    },
+    "/api/v1/fonts": {
+      "get": {
+        "tags": ["Resources"],
+        "summary": "Get available fonts",
+        "description": "List all available fonts in the system",
+        "responses": {
+          "200": {
+            "description": "Font list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string", "example": "Noto Sans TC" }
+                        }
+                      },
+                      "description": "Font list"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to retrieve font list"
+          }
+        }
+      }
+    },
+    "/api/v1/upload": {
+      "post": {
+        "tags": ["Utilities"],
+        "summary": "Upload a file",
+        "description": "Upload a material or BGM file",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string", "example": "uploads/file.mp4" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tts/voices": {
+      "get": {
+        "tags": ["Resources"],
+        "summary": "Get TTS voice list",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "schema": { "type": "string", "default": "azure_v1" },
+            "description": "TTS provider (azure_v1, azure_v2, edge_tts)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Voice list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string", "example": "zh-TW-YunJheNeural" },
+                          "display_name": { "type": "string", "example": "YunJhe (zh-TW, Male)" },
+                          "locale": { "type": "string", "example": "zh-TW" },
+                          "gender": { "type": "string", "example": "Male" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/temp": {
+      "delete": {
+        "tags": ["Utilities"],
+        "summary": "Clean temporary files",
+        "description": "Delete all temporary files prefixed with upload_",
+        "responses": {
+          "200": {
+            "description": "Cleanup successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deleted_count": { "type": "integer", "description": "Number of files deleted", "example": 5 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/preview/subtitle": {
+      "post": {
+        "tags": ["Utilities"],
+        "summary": "Preview subtitle style",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": { "type": "string", "example": "Preview Text", "description": "Text to preview" },
+                  "style": { "$ref": "#/components/schemas/SubtitleStyle" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview image (PNG)",
+            "content": { "image/png": {} }
+          }
+        }
+      }
+    },
+    "/api/v1/swagger.json": {
+      "get": {
+        "tags": ["Utilities"],
+        "summary": "Swagger document (this file)",
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SubtitleStyle": {
+        "type": "object",
+        "properties": {
+          "font": { "type": "string", "example": "Noto Sans TC", "description": "Font name" },
+          "size": { "type": "integer", "example": 36, "description": "Font size (px)" },
+          "color": { "type": "string", "example": "FFFFFF", "description": "Font color (Hex, without #)" },
+          "y_offset": { "type": "integer", "example": 70, "description": "Vertical offset (px)" },
+          "max_line_width": { "type": "integer", "example": 16, "description": "Max characters per line" },
+          "outline_width": { "type": "number", "example": 1.5, "description": "Outline width" },
+          "outline_color": { "type": "string", "example": "000000", "description": "Outline color (Hex)" }
+        }
+      },
+      "CoverStyle": {
+        "type": "object",
+        "description": "Cover style settings",
+        "properties": {
+          "enabled": { "type": "boolean", "description": "Enable cover", "default": false },
+          "title": { "type": "string", "description": "Title text", "example": "Today's Headlines" },
+          "title_voice": { "type": "boolean", "description": "Generate voice for title", "default": false },
+          "duration": {
+            "type": "number",
+            "description": "Cover duration (seconds). Ignored when title_voice=true",
+            "default": 2,
+            "example": 2
+          },
+          "extend_duration": {
+            "type": "number",
+            "description": "Extended duration (seconds) after cover voice ends",
+            "default": 0,
+            "example": 0
+          },
+          "background_type": {
+            "type": "string",
+            "enum": ["gradient", "solid", "image"],
+            "description": "Background type: gradient, solid, or image",
+            "default": "gradient"
+          },
+          "background_blur": { "type": "boolean", "description": "Blur background", "default": true },
+          "gradient_colors": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Gradient/solid colors (Hex)",
+            "example": ["FF6B9D", "FFE66D", "4ECDC4"]
+          },
+          "background_image": { "type": "string", "description": "Background image path or URL (when background_type=image)" }
+        }
+      },
+      "ProgressBar": {
+        "type": "object",
+        "description": "Animated image progress bar settings",
+        "properties": {
+          "enabled": { "type": "boolean", "description": "Enable animated image progress bar", "default": false },
+          "image_path": { "type": "string", "description": "Image path (local path after upload) or URL. Supports PNG, GIF, WebP" },
+          "direction": {
+            "type": "string",
+            "enum": ["top", "bottom", "left", "right"],
+            "description": "Movement direction: top (top edge, left→right), bottom (bottom edge, left→right), left (left edge, top→bottom), right (right edge, top→bottom)",
+            "default": "bottom"
+          }
+        }
+      },
+      "JobCreateRequest": {
+        "type": "object",
+        "properties": {
+          "script": { "type": "string", "example": "This is a test script.", "description": "Video script content" },
+          "materials": {
+            "type": "array",
+            "description": "Material list",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string", "enum": ["image", "video"], "description": "Material type" },
+                "source": { "type": "string", "enum": ["upload", "url"], "description": "Material source" },
+                "path_or_url": { "type": "string", "description": "File path or URL" },
+                "duration_sec": {
+                  "type": "number",
+                  "description": "Duration (seconds). Can be 0 when auto_distribute_duration=true"
+                },
+                "mute": { "type": "boolean", "description": "Mute audio (video only)" },
+                "volume": {
+                  "type": "number",
+                  "description": "Volume 0~1 (video only, when not muted)",
+                  "default": 1,
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "effect": {
+                  "type": "string",
+                  "description": "Camera effect (image only)",
+                  "enum": [
+                    "none",
+                    "zoom_in",
+                    "zoom_out",
+                    "pan_left",
+                    "pan_right",
+                    "pan_up",
+                    "pan_down",
+                    "diagonal_pan",
+                    "rotate",
+                    "shake"
+                  ]
+                }
+              },
+              "required": ["type", "source", "path_or_url", "duration_sec"]
+            }
+          },
+          "tts": {
+            "type": "object",
+            "description": "TTS settings",
+            "properties": {
+              "provider": { "type": "string", "enum": ["azure_v1", "azure_v2", "edge_tts"], "example": "azure_v1" },
+              "voice": { "type": "string", "example": "zh-TW-YunJheNeural" },
+              "locale": { "type": "string", "example": "zh-TW" },
+              "speed": { "type": "number", "example": 1.0 },
+              "pitch": { "type": "number", "example": 0.0 }
+            }
+          },
+          "video": {
+            "type": "object",
+            "description": "Video output settings",
+            "properties": {
+              "resolution": { "type": "string", "example": "1080x1920" },
+              "fps": { "type": "integer", "example": 30 },
+              "speed": { "type": "number", "example": 1.0 }
+            }
+          },
+          "bgm": {
+            "type": "object",
+            "description": "Background music settings",
+            "properties": {
+              "source": { "type": "string", "enum": ["upload", "url", "preset", "none"], "example": "preset" },
+              "path_or_url_or_name": { "type": "string", "example": "happy.mp3" },
+              "volume": { "type": "number", "example": 0.2 }
+            }
+          },
+          "subtitle_style": { "$ref": "#/components/schemas/SubtitleStyle" },
+          "cover_style": { "$ref": "#/components/schemas/CoverStyle" },
+          "progress_bar": { "$ref": "#/components/schemas/ProgressBar" },
+          "auto_distribute_duration": {
+            "type": "boolean",
+            "description": "Automatically distribute material duration evenly based on total voice length",
+            "default": false
+          }
+        },
+        "required": ["script", "materials", "tts", "video"]
+      }
+    }
+  }
+}
