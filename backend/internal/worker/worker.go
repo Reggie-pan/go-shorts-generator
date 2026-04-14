@@ -46,6 +46,11 @@ func (w *Worker) Run() {
 		_ = w.store.UpdateJob(rec)
 		log.Info().Str("job", rec.ID).Msg("開始處理任務")
 		if err := w.process(rec); err != nil {
+			// 如果任務已被標記為取消，則不應該更新為失敗狀態
+			if w.queue.IsCanceled(id) {
+				log.Info().Str("job", id).Msg("任務已被手動取消，跳過失敗狀態更新")
+				continue
+			}
 			rec.Status = job.StatusFailed
 			rec.ErrorMessage = err.Error()
 			rec.Progress = 0

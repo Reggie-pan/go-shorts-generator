@@ -254,25 +254,6 @@ export default function App() {
     })
   }
 
-  const finished = (status) => ['success', 'failed', 'canceled'].includes(status)
-
-  const formatTime = (dateString) => {
-    if (!dateString) return '-'
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleString(lang, {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      })
-    } catch {
-      return dateString
-    }
-  }
-
   // Form Validation
   const isFormValid = () => {
     // 1. Check Script
@@ -1183,6 +1164,7 @@ export default function App() {
                             width: `${j.progress}%`, 
                             background: j.status === 'success' ? 'linear-gradient(90deg, var(--color-secondary), #059669)' : 
                                        j.status === 'failed' ? 'linear-gradient(90deg, var(--color-danger), #dc2626)' :
+                                       j.status === 'canceled' ? '#64748b' :
                                        'linear-gradient(90deg, var(--color-primary), var(--color-primary-light))'
                           }}
                         ></div>
@@ -1197,6 +1179,8 @@ export default function App() {
                       <button className="btn-danger" onClick={() => remove(j.id)} title={t('delete')}><i className="fas fa-trash"></i></button>
                       {j.status === 'success' ? (
                         <a href={`/api/v1/jobs/${j.id}/result`} className="btn-download" title={t('download')}><i className="fas fa-download"></i></a>
+                      ) : (j.status === 'pending' || j.status === 'running') ? (
+                        <button className="btn-warning" onClick={() => cancel(j.id)} title={t('cancel')}><i className="fas fa-ban"></i></button>
                       ) : (
                         <span className="btn-placeholder"></span>
                       )}
