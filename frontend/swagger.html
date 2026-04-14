@@ -28,8 +28,14 @@
     <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.10.0/swagger-ui-standalone-preset.js"></script>
     <script>
       window.onload = function () {
+        const params = new URLSearchParams(window.location.search)
+        const lang = params.get('lang') || 'zh-TW'
+        const swaggerUrl = lang === 'zh-TW'
+          ? '/api/v1/swagger.json'
+          : '/api/v1/swagger.json?lang=' + encodeURIComponent(lang)
+
         const ui = SwaggerUIBundle({
-          url: '/api/v1/swagger.json',
+          url: swaggerUrl,
           dom_id: '#swagger-ui',
           deepLinking: true,
           presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
