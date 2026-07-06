@@ -585,3 +585,160 @@ func (h *Handlers) ListVoices(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{"data": voices})
 }
+
+// AddProgressBarOnly 接收現有影片與動態圖片設定，直接同步回傳合成後的影片
+func (h *Handlers) AddProgressBarOnly(w http.ResponseWriter, r *http.Request) {
+	var req job.AddProgressBarRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "請提供有效JSON"})
+		return
+	}
+
+	if req.VideoURL == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "請提供 video_url"})
+		return
+	}
+	if req.ProgressBar.ImagePath == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "請提供 progress_bar.image_path"})
+		return
+	}
+
+	// 1. 建立臨時目錄
+	tmpDir, err := os.MkdirTemp("", "pbar_only_*")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "建立臨時目錄失敗: " + err.Error()})
+		return
+	}
+	defer os.RemoveAll(tmpDir)
+
+	localVideo := filepath.Join(tmpDir, "input.mp4")
+	imgExt := filepath.Ext(req.ProgressBar.ImagePath)
+	if imgExt == "" {
+		imgExt = ".png"
+	}
+	// 避免 URL 參數帶有問號等髒資料，只取前綴的副檔名部分
+	if idx := strings.Index(imgExt, "?"); idx != -1 {
+		imgExt = imgExt[:idx]
+	}
+	localImg := filepath.Join(tmpDir, "pointer"+imgExt)
+	outputVideo := filepath.Join(tmpDir, "output.mp4")
+
+	// 2. 下載影片
+	log.Info().Str("video_url", req.VideoURL).Msg("開始下載影片...")
+	if strings.HasPrefix(req.VideoURL, "http://") || strings.HasPrefix(req.VideoURL, "https://") {
+		if err := downloadFile(req.VideoURL, localVideo); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "下載來源影片失敗: " + err.Error()})
+			return
+		}
+	} else {
+		if err := utils.CopyFile(req.VideoURL, localVideo); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "讀取來源影片失敗: " + err.Error()})
+			return
+		}
+	}
+
+	// 3. 下載圖片
+	log.Info().Str("image_url", req.ProgressBar.ImagePath).Msg("開始下載進度條圖片...")
+	if strings.HasPrefix(req.ProgressBar.ImagePath, "http://") || strings.HasPrefix(req.ProgressBar.ImagePath, "https://") {
+		if err := downloadFile(req.ProgressBar.ImagePath, localImg); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "下載進度條圖片失敗: " + err.Error()})
+			return
+		}
+	} else {
+		if err := utils.CopyFile(req.ProgressBar.ImagePath, localImg); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "讀取進度條圖片失敗: " + err.Error()})
+			return
+		}
+	}
+
+	// 4. 取得影片長度
+	dur, err := utils.AudioDurationSeconds(localVideo)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "取得影片長度失敗: " + err.Error()})
+		return
+	}
+	if dur <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "影片長度無效"})
+		return
+	}
+
+	// 5. 判斷是否為 GIF
+	loopOpt1, loopOpt2 := "-loop", "1"
+	if strings.ToLower(filepath.Ext(localImg)) == ".gif" {
+		loopOpt1, loopOpt2 = "-ignore_loop", "0"
+	}
+
+	// 6. 設定位移座標與 Filter
+	xExpr, yExpr := "0", "0"
+	dir := req.ProgressBar.Direction
+	if dir == "" {
+		dir = "bottom"
+	}
+
+	switch dir {
+	case "top":
+		xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
+		yExpr = "0"
+	case "bottom":
+		xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
+		yExpr = "H-h"
+	case "left":
+		xExpr = "0"
+		yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
+	case "right":
+		xExpr = "W-w"
+		yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
+	}
+
+	filterComplex := fmt.Sprintf(
+		"[1:v]format=rgba,scale=150:150:force_original_aspect_ratio=decrease[pbar];"+
+			"[0:v][pbar]overlay=%s:%s:shortest=1",
+		xExpr, yExpr,
+	)
+
+	cmdArgs := []string{
+		"-y",
+		"-i", localVideo,
+		loopOpt1, loopOpt2, "-i", localImg,
+		"-filter_complex", filterComplex,
+		"-c:v", "libx264",
+		"-preset", "veryfast",
+		"-crf", "23",
+		"-c:a", "copy",
+		outputVideo,
+	}
+
+	log.Info().Str("filter", filterComplex).Msg("開始執行 FFmpeg 合成進度條...")
+	if _, err := utils.RunCmdTimeout(5*time.Minute, "ffmpeg", cmdArgs...); err != nil {
+		log.Error().Err(err).Msg("FFmpeg 處理失敗")
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "FFmpeg 處理失敗: " + err.Error()})
+		return
+	}
+
+	log.Info().Msg("FFmpeg 進度條合成成功，開始回傳影片串流...")
+	w.Header().Set("Content-Type", "video/mp4")
+	http.ServeFile(w, r, outputVideo)
+	log.Info().Msg("影片串流回傳完成！")
+}
+
+// downloadFile 用於從 URL 下載檔案並儲存至本地
+func downloadFile(urlStr, destPath string) error {
+	resp, err := http.Get(urlStr)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("下載失敗，HTTP 狀態碼: %d", resp.StatusCode)
+	}
+
+	out, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
+}

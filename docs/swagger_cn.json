@@ -269,6 +269,27 @@
         }
       }
     },
+    "/api/v1/video/add-progressbar": {
+      "post": {
+        "tags": ["Utilities"],
+        "summary": "为现有视频新增动态图片进度条",
+        "description": "传入视频 URL 与动态图片进度条设置，直接返回合成后的视频流 (MP4)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AddProgressBarRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "合成后的视频文件 (MP4)",
+            "content": { "video/mp4": {} }
+          }
+        }
+      }
+    },
     "/api/v1/swagger.json": {
       "get": {
         "tags": ["Utilities"],
@@ -338,6 +359,14 @@
             "description": "移动方向：top（上方边缘，左→右）、bottom（下方边缘，左→右）、left（左侧边缘，上→下）、right（右侧边缘，上→下）",
             "default": "bottom"
           }
+        }
+      },
+      "AddProgressBarRequest": {
+        "type": "object",
+        "required": ["video_url", "progress_bar"],
+        "properties": {
+          "video_url": { "type": "string", "example": "https://example.com/input.mp4", "description": "来源视频 URL 或本地绝对路径" },
+          "progress_bar": { "$ref": "#/components/schemas/ProgressBar" }
         }
       },
       "JobCreateRequest": {

@@ -269,6 +269,27 @@
         }
       }
     },
+    "/api/v1/video/add-progressbar": {
+      "post": {
+        "tags": ["Utilities"],
+        "summary": "為現有影片新增動態圖片進度條",
+        "description": "傳入影片 URL 與動態圖片進度條設定，直接返回合成後的影片串流 (MP4)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AddProgressBarRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "合成後的影片檔案 (MP4)",
+            "content": { "video/mp4": {} }
+          }
+        }
+      }
+    },
     "/api/v1/swagger.json": {
       "get": {
         "tags": ["Utilities"],
@@ -338,6 +359,14 @@
             "description": "移動方向：top（上方邊緣，左→右）、bottom（下方邊緣，左→右）、left（左側邊緣，上→下）、right（右側邊緣，上→下）",
             "default": "bottom"
           }
+        }
+      },
+      "AddProgressBarRequest": {
+        "type": "object",
+        "required": ["video_url", "progress_bar"],
+        "properties": {
+          "video_url": { "type": "string", "example": "https://example.com/input.mp4", "description": "來源影片 URL 或本地絕對路徑" },
+          "progress_bar": { "$ref": "#/components/schemas/ProgressBar" }
         }
       },
       "JobCreateRequest": {

@@ -70,6 +70,7 @@ func NewRouter(cfg *config.Config, store *storage.Store, q *worker.Queue) http.H
 	api.HandleFunc("/presets/bgm", h.ListBGM).Methods("GET")
 	api.HandleFunc("/fonts", h.ListFonts).Methods("GET")
 	api.HandleFunc("/preview/subtitle", h.PreviewSubtitle).Methods("POST")
+	api.HandleFunc("/video/add-progressbar", h.AddProgressBarOnly).Methods("POST")
 	api.HandleFunc("/swagger.json", h.Swagger).Methods("GET")
 
 	// 靜態資源：BGM

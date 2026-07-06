@@ -269,6 +269,27 @@
         }
       }
     },
+    "/api/v1/video/add-progressbar": {
+      "post": {
+        "tags": ["Utilities"],
+        "summary": "Add dynamic image progress bar to existing video",
+        "description": "Provide a video URL and dynamic image progress bar settings, directly returns the synthesized video stream (MP4)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AddProgressBarRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Synthesized video file (MP4)",
+            "content": { "video/mp4": {} }
+          }
+        }
+      }
+    },
     "/api/v1/swagger.json": {
       "get": {
         "tags": ["Utilities"],
@@ -338,6 +359,14 @@
             "description": "Movement direction: top (top edge, left→right), bottom (bottom edge, left→right), left (left edge, top→bottom), right (right edge, top→bottom)",
             "default": "bottom"
           }
+        }
+      },
+      "AddProgressBarRequest": {
+        "type": "object",
+        "required": ["video_url", "progress_bar"],
+        "properties": {
+          "video_url": { "type": "string", "example": "https://example.com/input.mp4", "description": "Source video URL or local absolute path" },
+          "progress_bar": { "$ref": "#/components/schemas/ProgressBar" }
         }
       },
       "JobCreateRequest": {

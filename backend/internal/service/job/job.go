@@ -72,6 +72,12 @@ type ProgressBar struct {
 	Direction string `json:"direction"`  // 移動方向：top, bottom, left, right
 }
 
+// AddProgressBarRequest 獨立進度條處理請求
+type AddProgressBarRequest struct {
+	VideoURL    string      `json:"video_url"`    // 來源影片 URL
+	ProgressBar ProgressBar `json:"progress_bar"` // 進度條設定
+}
+
 // JobCreateRequest 建立影片任務的請求參數
 type JobCreateRequest struct {
 	Script                 string        `json:"script"`                   // 影片腳本內容
