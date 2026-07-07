@@ -320,7 +320,7 @@ func (w *Worker) process(rec *job.Record) error {
 			}
 		} else { // URL
 			// URL: 下載
-			if _, err := utils.RunCmd("curl", "-L", "-o", bgmPath, rec.Request.BGM.Path); err != nil {
+			if err := utils.DownloadFile(rec.Request.BGM.Path, bgmPath); err != nil {
 				return fmt.Errorf("下載 BGM 失敗: %v", err)
 			}
 		}
@@ -349,7 +349,7 @@ func (w *Worker) process(rec *job.Record) error {
 		progressBarPath := filepath.Join(base, "progress_bar"+imgExt)
 		if strings.HasPrefix(rec.Request.ProgressBar.ImagePath, "http://") || strings.HasPrefix(rec.Request.ProgressBar.ImagePath, "https://") {
 			// URL: 下載
-			if _, err := utils.RunCmd("curl", "-L", "-o", progressBarPath, rec.Request.ProgressBar.ImagePath); err != nil {
+			if err := utils.DownloadFile(rec.Request.ProgressBar.ImagePath, progressBarPath); err != nil {
 				log.Warn().Err(err).Msg("下載進度條圖片失敗")
 			} else {
 				progressBarInput = progressBarPath

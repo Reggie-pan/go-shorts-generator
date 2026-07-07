@@ -10,7 +10,7 @@
 
 <div align="center">
 
-[![Go](https://img.shields.io/badge/Go-1.24-blue?style=flat-square&logo=go)](https://golang.org/)
+[![Go](https://img.shields.io/badge/Go-1.26-blue?style=flat-square&logo=go)](https://golang.org/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat-square&logo=docker)](https://www.docker.com/)
 [![Docker Hub](https://img.shields.io/docker/pulls/reggiepan/goshortsgenerator?style=flat-square&logo=docker)](https://hub.docker.com/r/reggiepan/goshortsgenerator)
@@ -52,7 +52,7 @@
 | 領域 | 技術 |
 | :--- | :--- |
 | **前端** | React v18, Vite, Sass |
-| **後端** | Go 1.24 (Gorilla Mux) |
+| **後端** | Go 1.26 (Gorilla Mux) |
 | **資料儲存** | Local File System |
 | **容器化** | Docker, Docker Compose ([Docker Hub](https://hub.docker.com/r/reggiepan/goshortsgenerator)) |
 | **AI 引擎** | Google Gemini (LLM), Edge TTS / Microsoft Azure TTS |
@@ -94,7 +94,7 @@ docker-compose up -d --build
 ### 4. 訪問應用程式
 
 *   **Web 介面**：[http://localhost:8080](http://localhost:8080)
-*   **API 文件**：[http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
+*   **API 文件**：[http://localhost:8080/swagger.html](http://localhost:8080/swagger.html)
 
 ## 配置要求 📦
 

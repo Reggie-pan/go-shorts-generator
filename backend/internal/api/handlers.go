@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"os/exec"
@@ -59,10 +59,7 @@ func (h *Handlers) CreateJob(w http.ResponseWriter, r *http.Request) {
 		bgmList := utils.ListAudioFiles(h.Config.BgmPath)
 		if len(bgmList) > 0 {
 			// 簡單隨機挑選
-			// 注意：Go 1.20+ math/rand 自動 seed，若需要可能要手動 seed
-			// 這裡簡單使用 time.Now().UnixNano() 做 seed
-			rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-			idx := rng.Intn(len(bgmList))
+			idx := rand.IntN(len(bgmList))
 			selected := bgmList[idx]
 			req.BGM.Path = selected
 			log.Info().Str("selected_bgm", selected).Msg("隨機挑選 BGM")
@@ -512,8 +509,9 @@ func (h *Handlers) UploadHandler(w http.ResponseWriter, r *http.Request) {
 		ext = ".bin"
 	}
 
-	// 確保 uploads 目錄存在 (可選，這裡直接用 TempDir)
-	tmpDir := os.TempDir()
+	// 使用專屬暫存目錄避免衝突
+	tmpDir := filepath.Join(os.TempDir(), "go-shorts-generator")
+	os.MkdirAll(tmpDir, 0o755)
 	dstName := fmt.Sprintf("upload_%d%s", time.Now().UnixNano(), ext)
 	dstPath := filepath.Join(tmpDir, dstName)
 
@@ -541,9 +539,13 @@ func (h *Handlers) UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 // CleanTempFiles 清除所有暫存檔案
 func (h *Handlers) CleanTempFiles(w http.ResponseWriter, r *http.Request) {
-	tmpDir := os.TempDir()
+	tmpDir := filepath.Join(os.TempDir(), "go-shorts-generator")
 	files, err := os.ReadDir(tmpDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			writeJSON(w, http.StatusOK, map[string]int{"deleted_count": 0})
+			return
+		}
 		log.Error().Err(err).Msg("讀取暫存目錄失敗")
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "讀取暫存目錄失敗"})
 		return
@@ -626,7 +628,7 @@ func (h *Handlers) AddProgressBarOnly(w http.ResponseWriter, r *http.Request) {
 	// 2. 下載影片
 	log.Info().Str("video_url", req.VideoURL).Msg("開始下載影片...")
 	if strings.HasPrefix(req.VideoURL, "http://") || strings.HasPrefix(req.VideoURL, "https://") {
-		if err := downloadFile(req.VideoURL, localVideo); err != nil {
+		if err := utils.DownloadFile(req.VideoURL, localVideo); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "下載來源影片失敗: " + err.Error()})
 			return
 		}
@@ -640,7 +642,7 @@ func (h *Handlers) AddProgressBarOnly(w http.ResponseWriter, r *http.Request) {
 	// 3. 下載圖片
 	log.Info().Str("image_url", req.ProgressBar.ImagePath).Msg("開始下載進度條圖片...")
 	if strings.HasPrefix(req.ProgressBar.ImagePath, "http://") || strings.HasPrefix(req.ProgressBar.ImagePath, "https://") {
-		if err := downloadFile(req.ProgressBar.ImagePath, localImg); err != nil {
+		if err := utils.DownloadFile(req.ProgressBar.ImagePath, localImg); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "下載進度條圖片失敗: " + err.Error()})
 			return
 		}
@@ -721,24 +723,3 @@ func (h *Handlers) AddProgressBarOnly(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg("影片串流回傳完成！")
 }
 
-// downloadFile 用於從 URL 下載檔案並儲存至本地
-func downloadFile(urlStr, destPath string) error {
-	resp, err := http.Get(urlStr)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("下載失敗，HTTP 狀態碼: %d", resp.StatusCode)
-	}
-
-	out, err := os.Create(destPath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	return err
-}

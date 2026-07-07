@@ -1,4 +1,4 @@
-FROM golang:1.24-bullseye AS backend-builder
+FROM golang:1.26-bookworm AS backend-builder
 RUN apt-get update && apt-get install -y ffmpeg espeak curl fonts-noto-cjk fontconfig && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/backend
 COPY backend/go.mod backend/go.sum* ./
