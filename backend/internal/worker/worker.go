@@ -1,10 +1,12 @@
 package worker
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -23,54 +25,130 @@ type Worker struct {
 	store    *storage.Store
 	queue    *Queue
 	aiClient *ai.Client
+	wg       sync.WaitGroup
 }
 
 func NewWorker(cfg *config.Config, store *storage.Store, q *Queue, aiClient *ai.Client) *Worker {
 	return &Worker{cfg: cfg, store: store, queue: q, aiClient: aiClient}
 }
 
-func (w *Worker) Run() {
+func (w *Worker) Run(ctx context.Context) {
 	for {
-		id := w.queue.Pop()
-		if w.queue.IsCanceled(id) {
-			continue
-		}
-		rec, err := w.store.GetJob(id)
+		id, err := w.queue.PopWithContext(ctx)
 		if err != nil {
-			log.Error().Err(err).Str("job", id).Msg("讀取任務失敗")
-			continue
+			log.Info().Msg("Worker 停止接收新任務")
+			return
 		}
-		rec.Status = job.StatusRunning
-		rec.Progress = 5
-		rec.UpdatedAt = time.Now()
-		_ = w.store.UpdateJob(rec)
-		log.Info().Str("job", rec.ID).Msg("開始處理任務")
-		if err := w.process(rec); err != nil {
-			// 如果任務已被標記為取消，則不應該更新為失敗狀態
-			if w.queue.IsCanceled(id) {
-				log.Info().Str("job", id).Msg("任務已被手動取消，跳過失敗狀態更新")
-				continue
-			}
-			rec.Status = job.StatusFailed
-			rec.ErrorMessage = err.Error()
-			rec.Progress = 0
-			log.Error().Str("job", rec.ID).Err(err).Msg("任務失敗")
-		} else {
-			rec.Status = job.StatusSuccess
-			rec.Progress = 100
-			rec.ResultURL = fmt.Sprintf("/api/v1/jobs/%s/result", rec.ID)
-			log.Info().Str("job", rec.ID).Msg("任務處理完成")
-		}
-		rec.UpdatedAt = time.Now()
-		_ = w.store.UpdateJob(rec)
+		w.wg.Add(1)
+		w.processJobWithRecovery(ctx, id)
+		w.wg.Done()
 	}
 }
 
-func (w *Worker) process(rec *job.Record) error {
+// Wait 優雅關閉等待方法 (D1)
+func (w *Worker) Wait(timeout time.Duration) {
+	c := make(chan struct{})
+	go func() {
+		w.wg.Wait()
+		close(c)
+	}()
+	select {
+	case <-c:
+		log.Info().Msg("Worker 所有運行中任務優雅關閉完成")
+	case <-time.After(timeout):
+		log.Warn().Msg("Worker 優雅關閉超時，強制關閉")
+	}
+}
+
+func (w *Worker) processJobWithRecovery(ctx context.Context, id string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().Interface("panic", r).Str("job", id).Msg("Worker 遭遇嚴重 panic 崩潰")
+			if rec, err := w.store.GetJob(id); err == nil {
+				rec.Status = job.StatusFailed
+				rec.ErrorMessage = fmt.Sprintf("系統發生未預期嚴重錯誤 (panic): %v", r)
+				rec.Progress = 0
+				rec.UpdatedAt = time.Now()
+				_ = w.store.UpdateJob(rec)
+			}
+			w.queue.RemoveCancel(id)
+		}
+	}()
+
+	if w.queue.IsCanceled(id) {
+		w.queue.RemoveCancel(id)
+		return
+	}
+	rec, err := w.store.GetJob(id)
+	if err != nil {
+		log.Error().Err(err).Str("job", id).Msg("讀取任務失敗")
+		return
+	}
+	rec.Status = job.StatusRunning
+	rec.Progress = 5
+	rec.UpdatedAt = time.Now()
+	_ = w.store.UpdateJob(rec)
+	log.Info().Str("job", rec.ID).Msg("開始處理任務")
+	if err := w.process(ctx, rec); err != nil {
+		// 如果任務已被標記為取消，則不應該更新為失敗狀態
+		if w.queue.IsCanceled(id) {
+			log.Info().Str("job", id).Msg("任務已被手動取消，跳過失敗狀態更新")
+			return
+		}
+		rec.Status = job.StatusFailed
+		rec.ErrorMessage = err.Error()
+		rec.Progress = 0
+		log.Error().Str("job", rec.ID).Err(err).Msg("任務失敗")
+	} else {
+		rec.Status = job.StatusSuccess
+		rec.Progress = 100
+		rec.ResultURL = fmt.Sprintf("/api/v1/jobs/%s/result", rec.ID)
+		log.Info().Str("job", rec.ID).Msg("任務處理完成")
+	}
+	rec.UpdatedAt = time.Now()
+	_ = w.store.UpdateJob(rec)
+	w.queue.RemoveCancel(id)
+}
+
+func (w *Worker) process(ctx context.Context, rec *job.Record) error {
 	base := rec.BasePath
 	if err := os.MkdirAll(base, 0o755); err != nil {
 		return err
 	}
+
+	// 追蹤本輪產生的臨時語音片段檔案，以便在退出時清理 (D3)
+	var tempFiles []string
+	defer func() {
+		for _, f := range tempFiles {
+			if f != "" {
+				_ = os.Remove(f)
+			}
+		}
+	}()
+
+	// D4: 提早將全域暫存區的上傳檔案移入該任務的 materials 目錄下，防止 temp 清理 API 提前刪除
+	jobMaterialsDir := filepath.Join(base, "materials")
+	_ = os.MkdirAll(jobMaterialsDir, 0o755)
+	tmpDir := os.TempDir()
+	for i, m := range rec.Request.Materials {
+		if m.Source == "upload" && strings.HasPrefix(m.Path, tmpDir) {
+			targetPath := filepath.Join(jobMaterialsDir, filepath.Base(m.Path))
+			if _, err := os.Stat(m.Path); err == nil {
+				if err := os.Rename(m.Path, targetPath); err == nil {
+					rec.Request.Materials[i].Path = targetPath
+					log.Info().Str("job", rec.ID).Str("from", m.Path).Str("to", targetPath).Msg("將暫存素材搬移到任務專屬目錄")
+				} else {
+					// 跨分割區時，Rename 會失敗，降級為複製並刪除
+					if err := utils.CopyFile(m.Path, targetPath); err == nil {
+						rec.Request.Materials[i].Path = targetPath
+						_ = os.Remove(m.Path)
+						log.Info().Str("job", rec.ID).Str("from", m.Path).Str("to", targetPath).Msg("跨分割區複製暫存素材")
+					}
+				}
+			}
+		}
+	}
+
 	log.Info().Str("job", rec.ID).Msg("準備素材")
 	materials, err := media.PrepareMaterials(base, rec.Request.Materials)
 	if err != nil {
@@ -112,7 +190,7 @@ func (w *Worker) process(rec *job.Record) error {
 
 	// 建立標準靜音檔 (0.2s, PCM 24k, Mono)
 	silencePath := filepath.Join(base, "silence.wav")
-	if _, err := utils.RunCmd("ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", "0.2", "-c:a", "pcm_s16le", silencePath); err != nil {
+	if _, err := utils.RunCmdContext(ctx, "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono", "-t", "0.2", "-c:a", "pcm_s16le", silencePath); err != nil {
 		return fmt.Errorf("建立靜音檔失敗: %w", err)
 	}
 	silenceDur, _ := utils.AudioDurationSeconds(silencePath)
@@ -131,15 +209,22 @@ func (w *Worker) process(rec *job.Record) error {
 		if err != nil {
 			return err
 		}
+		// 收集原始 TTS 暫存檔以供後續清理 (D3)
+		tempFiles = append(tempFiles, path)
 
 		// 2. 強制重編碼與修剪 (Re-encode & Trim)
 		// 強制轉為 pcm_s16le 24000Hz mono，確保與靜音檔一致以便 concat 拼接
 		trimmedPath := strings.TrimSuffix(path, filepath.Ext(path)) + fmt.Sprintf("_%d_processed.wav", i)
+		// 修剪音訊頭部與尾部的靜音，確保說話句間停頓符合預設時長。
+		// 由於 silenceremove 僅支援從開頭剪靜音，需配合 areverse 反轉音訊以修剪尾部。
 		filter := "silenceremove=start_periods=1:start_duration=0:start_threshold=-50dB:detection=peak,areverse,silenceremove=start_periods=1:start_duration=0:start_threshold=-50dB:detection=peak,areverse"
 
-		if out, err := utils.RunCmd("ffmpeg", "-y", "-i", path, "-af", filter, "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", trimmedPath); err != nil {
+		if out, err := utils.RunCmdContext(ctx, "ffmpeg", "-y", "-i", path, "-af", filter, "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", trimmedPath); err != nil {
 			log.Warn().Err(err).Str("output", out).Msg("音訊處理失敗，使用原始檔")
 			trimmedPath = path
+		} else {
+			// 收集 trimmed 後的暫存檔 (D3)
+			tempFiles = append(tempFiles, trimmedPath)
 		}
 
 		dur, _ := utils.AudioDurationSeconds(trimmedPath)
@@ -179,7 +264,7 @@ func (w *Worker) process(rec *job.Record) error {
 
 	voiceOut := filepath.Join(base, "voice.wav")
 	// 合併語音，使用 copy 模式避免重編碼 (前面已統一格式)
-	if out, err := utils.RunCmd("ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatTxt, "-c:a", "copy", voiceOut); err != nil {
+	if out, err := utils.RunCmdContext(ctx, "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatTxt, "-c:a", "copy", voiceOut); err != nil {
 		return fmt.Errorf("合併語音失敗: %v / %s", err, out)
 	}
 
@@ -232,7 +317,7 @@ func (w *Worker) process(rec *job.Record) error {
 	segments := media.BuildVideoTimeline(materials, rec.Request.Materials, int(totalVoiceDur*1000))
 	log.Debug().Str("job", rec.ID).Str("resolution", rec.Request.Video.Resolution).Msg("製作影片片段")
 
-	videoPath, err := media.MakeSegments(base, rec.Request.Video.Resolution, rec.Request.Video.FPS, rec.Request.Video.Background, segments, rec.Request.Video.Transition, rec.Request.Video.BlurBackground, func(percent int) {
+	videoPath, err := media.MakeSegments(ctx, base, rec.Request.Video.Resolution, rec.Request.Video.FPS, rec.Request.Video.Background, segments, rec.Request.Video.Transition, rec.Request.Video.BlurBackground, w.cfg.FFmpegThreads, func(percent int) {
 		// Video Generation: 35% -> 70%
 		currentProgress := 35 + int(float64(percent)*0.35)
 		if currentProgress > 70 {
@@ -271,6 +356,7 @@ func (w *Worker) process(rec *job.Record) error {
 				coverDuration = rec.Request.CoverStyle.Duration
 			} else {
 				coverVoicePath = titleVoicePath
+				tempFiles = append(tempFiles, titleVoicePath) // 收集封面語音暫存檔以供清理 (D3)
 				coverDuration, _ = utils.AudioDurationSeconds(titleVoicePath)
 			}
 		} else {
@@ -278,12 +364,14 @@ func (w *Worker) process(rec *job.Record) error {
 		}
 
 		generatedCoverPath, err := media.GenerateCoverVideo(
+			ctx,
 			base,
 			rec.Request.CoverStyle,
 			rec.Request.SubtitleStyle,
 			rec.Request.Video.Resolution,
 			coverVoicePath,
 			coverDuration,
+			w.cfg.FFmpegThreads,
 		)
 		if err != nil {
 			log.Warn().Err(err).Msg("生成封面失敗，跳過封面")
@@ -295,7 +383,7 @@ func (w *Worker) process(rec *job.Record) error {
 		_ = w.store.UpdateJob(rec)
 	}
 
-	// 2. 準備背景音樂 (BGM)
+	// 準備背景音樂 (BGM)
 	var bgmInput string
 	if rec.Request.BGM.Source != "none" {
 		bgmExt := filepath.Ext(rec.Request.BGM.Path)
@@ -339,7 +427,7 @@ func (w *Worker) process(rec *job.Record) error {
 		}
 	}
 
-	// 10. 準備進度條圖片
+	// 準備進度條圖片
 	var progressBarInput string
 	if rec.Request.ProgressBar.Enabled {
 		imgExt := filepath.Ext(rec.Request.ProgressBar.ImagePath)
@@ -369,7 +457,7 @@ func (w *Worker) process(rec *job.Record) error {
 	subPathFF := filepath.ToSlash(subPath)
 	subPathFF = strings.ReplaceAll(subPathFF, "'", "\\'")
 
-	// 移除 setpts=PTS/%f，避免開始速度
+	// 構建字幕 filter
 	videoFilter := fmt.Sprintf("subtitles='%s'", subPathFF)
 
 	var args []string
@@ -379,7 +467,7 @@ func (w *Worker) process(rec *job.Record) error {
 
 	voiceSeconds := totalVoiceDur
 
-	// 4. 最終合成
+	// 最終合成影片與音訊
 	// 輸入流
 	// 0: video.mp4 (無聲 + 畫面)
 	// 1: bgm.mp3 (可選)
@@ -415,93 +503,39 @@ func (w *Worker) process(rec *job.Record) error {
 		bgmIdx := "1:a"
 		voiceIdx := "2:a"
 		videoAudioIdx := "0:a"
-		
-		var pbarFilter string
+
 		if progressBarInput != "" {
-			loopOpt1, loopOpt2 := "-loop", "1"
-			if strings.ToLower(filepath.Ext(progressBarInput)) == ".gif" {
-				loopOpt1, loopOpt2 = "-ignore_loop", "0"
-			}
-			// 插入進度條圖片輸入
-			args = []string{"-y", "-i", videoPath, loopOpt1, loopOpt2, "-i", progressBarInput, "-i", bgmInput, "-i", voiceOut}
 			bgmIdx = "2:a"
 			voiceIdx = "3:a"
-			
-			// 座標計算
-			xExpr, yExpr := "0", "0"
-			dir := rec.Request.ProgressBar.Direction
-			dur := finalDuration
-			switch dir {
-			case "top":
-				xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
-				yExpr = "0"
-			case "bottom":
-				xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
-				yExpr = "H-h"
-			case "left":
-				xExpr = "0"
-				yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
-			case "right":
-				xExpr = "W-w"
-				yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
-			}
-			pbarFilter = fmt.Sprintf("[0:v]%s[vsub];[1:v]format=rgba,scale=150:150:force_original_aspect_ratio=decrease[pbar];[vsub][pbar]overlay=%s:%s:shortest=1", videoFilter, xExpr, yExpr)
-			// 已經在 pbarFilter 處理了
-		} else {
-			args = []string{"-y", "-i", videoPath, "-i", bgmInput, "-i", voiceOut}
-			pbarFilter = fmt.Sprintf("[0:v]%s", videoFilter)
 		}
+		var pbarFilter string
+		args, pbarFilter = media.BuildProgressBarFilter(progressBarInput, rec.Request.ProgressBar.Direction, finalDuration, videoPath, videoFilter)
+		args = append(args, "-i", bgmInput, "-i", voiceOut)
 
 		filter := fmt.Sprintf(`%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[%s]volume=%.2f,aloop=-1:size=0,atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[bgm];[%s]aformat=sample_rates=44100:channel_layouts=stereo,volume=3.0,apad=whole_dur=%.3f[tts];[%s]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][bgm][tts]amix=inputs=3:duration=first[aout]`,
 			pbarFilter, finalDuration, bgmIdx, rec.Request.BGM.Volume, finalDuration, voiceIdx, finalDuration, videoAudioIdx, finalDuration)
 
-		args = append(args, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output)
+		args = append(args, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", w.cfg.FFmpegThreads, "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output)
 	} else {
 		// Inputs:
 		// 0: video, 1: voice
 		// 如果有進度條圖片，則是 0: video, 1: pbar, 2: voice
 		voiceIdx := "1:a"
 		videoAudioIdx := "0:a"
-		
-		var pbarFilter string
+
 		if progressBarInput != "" {
-			loopOpt1, loopOpt2 := "-loop", "1"
-			if strings.ToLower(filepath.Ext(progressBarInput)) == ".gif" {
-				loopOpt1, loopOpt2 = "-ignore_loop", "0"
-			}
-			args = []string{"-y", "-i", videoPath, loopOpt1, loopOpt2, "-i", progressBarInput, "-i", voiceOut}
 			voiceIdx = "2:a"
-			
-			// 座標計算
-			xExpr, yExpr := "0", "0"
-			dir := rec.Request.ProgressBar.Direction
-			dur := finalDuration
-			switch dir {
-			case "top":
-				xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
-				yExpr = "0"
-			case "bottom":
-				xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
-				yExpr = "H-h"
-			case "left":
-				xExpr = "0"
-				yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
-			case "right":
-				xExpr = "W-w"
-				yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
-			}
-			pbarFilter = fmt.Sprintf("[0:v]%s[vsub];[1:v]format=rgba,scale=150:150:force_original_aspect_ratio=decrease[pbar];[vsub][pbar]overlay=%s:%s:shortest=1", videoFilter, xExpr, yExpr)
-		} else {
-			args = []string{"-y", "-i", videoPath, "-i", voiceOut}
-			pbarFilter = fmt.Sprintf("[0:v]%s", videoFilter)
 		}
+		var pbarFilter string
+		args, pbarFilter = media.BuildProgressBarFilter(progressBarInput, rec.Request.ProgressBar.Direction, finalDuration, videoPath, videoFilter)
+		args = append(args, "-i", voiceOut)
 
 		filter := fmt.Sprintf(`%s,trim=0:%.3f,setpts=PTS-STARTPTS[vout];[%s]aformat=sample_rates=44100:channel_layouts=stereo,volume=2.0,apad=whole_dur=%.3f[tts];[%s]atrim=0:%.3f,aformat=sample_rates=44100:channel_layouts=stereo[video_audio];[video_audio][tts]amix=inputs=2:duration=first[aout]`,
 			pbarFilter, finalDuration, voiceIdx, finalDuration, videoAudioIdx, finalDuration)
 
-		args = append(args, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output)
+		args = append(args, "-filter_complex", filter, "-map", "[vout]", "-map", "[aout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", w.cfg.FFmpegThreads, "-c:a", "aac", "-b:a", "128k", "-t", fmt.Sprintf("%.3f", finalDuration), output)
 	}
-	if out, err := utils.RunCmdTimeout(5*time.Minute, "ffmpeg", args...); err != nil {
+	if out, err := utils.RunCmdTimeoutContext(ctx, 5*time.Minute, "ffmpeg", args...); err != nil {
 		return fmt.Errorf("合成最終影片失敗: %v / %s", err, out)
 	} else if out != "" {
 		log.Debug().Str("job", rec.ID).Msg(out)
@@ -509,15 +543,16 @@ func (w *Worker) process(rec *job.Record) error {
 	rec.Progress = 90
 	_ = w.store.UpdateJob(rec)
 
-	// 6. 如果有封面，在最終合成後拼接
+	// 如果有封面，在最終合成後拼接
 	if coverVideoPath != "" {
 		log.Info().Str("job", rec.ID).Msg("拼接封面到最終影片...")
 
 		// 先重新編碼封面影片，確保與主影片格式完全一致
 		reEncodedCover := filepath.Join(base, "cover_reencoded.mp4")
-		if _, err := utils.RunCmdTimeout(2*time.Minute, "ffmpeg", "-y",
+		if _, err := utils.RunCmdTimeoutContext(ctx, 2*time.Minute, "ffmpeg", "-y",
 			"-i", coverVideoPath,
 			"-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+			"-threads", w.cfg.FFmpegThreads,
 			"-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2",
 			"-pix_fmt", "yuv420p",
 			"-r", "30",
@@ -533,14 +568,14 @@ func (w *Worker) process(rec *job.Record) error {
 			log.Warn().Err(err).Msg("寫入拼接列表失敗")
 		} else {
 			finalWithCover := filepath.Join(base, "final_with_cover.mp4")
-			if _, err := utils.RunCmdTimeout(2*time.Minute, "ffmpeg", "-y",
+			if _, err := utils.RunCmdTimeoutContext(ctx, 2*time.Minute, "ffmpeg", "-y",
 				"-f", "concat", "-safe", "0", "-i", concatListPath,
 				"-c", "copy",
 				finalWithCover); err != nil {
 				log.Warn().Err(err).Msg("拼接封面失敗，使用原始影片")
 			} else {
 				// 使用 ffmpeg 複製（比 cp/copy 更可靠）
-				if _, err := utils.RunCmdTimeout(1*time.Minute, "ffmpeg", "-y",
+				if _, err := utils.RunCmdTimeoutContext(ctx, 1*time.Minute, "ffmpeg", "-y",
 					"-i", finalWithCover,
 					"-c", "copy",
 					output); err != nil {

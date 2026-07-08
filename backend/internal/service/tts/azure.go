@@ -56,6 +56,9 @@ func (a *AzureProvider) Synthesize(text, voice, locale string, speed, pitch floa
 	if _, err := io.Copy(f, resp.Body); err != nil {
 		return "", 0, err
 	}
+	if err := f.Sync(); err != nil {
+		return "", 0, fmt.Errorf("failed to sync azure tts file: %w", err)
+	}
 
 	info, _ := f.Stat()
 	if info.Size() < 100 {
@@ -90,7 +93,7 @@ func (a *AzureProvider) ListVoices() ([]Voice, error) {
 	// Azure 返回 JSON 結構
 	type azureVoice struct {
 		ShortName   string `json:"ShortName"`
-		DisplayName string `json:"DisplayName"` // 這裡其實是 LocalName + (Description)
+		DisplayName string `json:"DisplayName"` // 語音的顯示名稱
 		LocalName   string `json:"LocalName"`
 		Locale      string `json:"Locale"`
 		Gender      string `json:"Gender"`

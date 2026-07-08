@@ -37,10 +37,10 @@ func CopyFile(src, dst string) error {
 	return nil
 }
 
-// DownloadFile downloads a file from urlStr and saves it to destPath with a 30s timeout.
+// DownloadFile downloads a file from urlStr and saves it to destPath with a 5m timeout.
 func DownloadFile(urlStr, destPath string) error {
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: 5 * time.Minute,
 	}
 	resp, err := client.Get(urlStr)
 	if err != nil {

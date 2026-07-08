@@ -32,31 +32,31 @@
 
 ## Features 🎯
 
-*   **🤖 Fully Automated Workflow**: One-click completion of complex processes from script to final video, with no manual intervention required.
-*   **🧠 AI Powered**:
-    *   Integrates **Google Gemini** (default: `gemini-2.5-flash-lite`) for precise script segmentation and semantic analysis.
-    *   Supports **Edge TTS** (Free), **Azure TTS v1**, and **Azure TTS v2** to generate natural, fluid neural network speech.
-*   **🎨 Highly Customizable**:
-    *   Supports custom subtitle styles (font, color, size, outline).
-    *   Freely mix background music, transition effects, and background blur processing.
-    *   Multiple camera effects available: `zoom_in`, `zoom_out`, `pan_left`, `pan_right`, `pan_up`, `pan_down`, `diagonal_pan`, `rotate`, `shake`.
-*   **🎬 Title Cover**:
-    *   Supports automatic generation of video opening covers with title text and gradient/blur/image backgrounds.
-    *   Optional title voice, with cover duration automatically adjusted based on voice length.
-*   **⏱️ Auto Duration Distribution**:
-    *   When enabled, the system automatically distributes material durations evenly based on total voice duration.
-*   **🐳 Containerized Deployment**: Built on Docker architecture for simple deployment and consistent environments.
+- **🤖 Fully Automated Workflow**: One-click completion of complex processes from script to final video, with no manual intervention required.
+- **🧠 AI Powered**:
+  - Integrates **Google Gemini** (default: `gemini-3.1-flash-lite`) for precise script segmentation and semantic analysis.
+  - Supports **Edge TTS** (Free), **Azure TTS v1**, and **Azure TTS v2** to generate natural, fluid neural network speech.
+- **🎨 Highly Customizable**:
+  - Supports custom subtitle styles (font, color, size, outline).
+  - Freely mix background music, transition effects, and background blur processing.
+  - Multiple camera effects available: `zoom_in`, `zoom_out`, `pan_left`, `pan_right`, `pan_up`, `pan_down`, `diagonal_pan`, `rotate`, `shake`.
+- **🎬 Title Cover**:
+  - Supports automatic generation of video opening covers with title text and gradient/blur/image backgrounds.
+  - Optional title voice, with cover duration automatically adjusted based on voice length.
+- **⏱️ Auto Duration Distribution**:
+  - When enabled, the system automatically distributes material durations evenly based on total voice duration.
+- **🐳 Containerized Deployment**: Built on Docker architecture for simple deployment and consistent environments.
 
 ## Tech Stack 🛠️
 
-| Area | Technology |
-| :--- | :--- |
-| **Frontend** | React v18, Vite, Sass |
-| **Backend** | Go 1.26 (Gorilla Mux) |
-| **Data Storage** | Local File System |
+| Area                 | Technology                                                                                  |
+| :------------------- | :------------------------------------------------------------------------------------------ |
+| **Frontend**         | React v18, Vite, Sass                                                                       |
+| **Backend**          | Go 1.26 (Gorilla Mux)                                                                       |
+| **Data Storage**     | Local File System                                                                           |
 | **Containerization** | Docker, Docker Compose ([Docker Hub](https://hub.docker.com/r/reggiepan/goshortsgenerator)) |
-| **AI Engine** | Google Gemini (LLM), Edge TTS / Microsoft Azure TTS |
-| **Video Processing** | FFmpeg |
+| **AI Engine**        | Google Gemini (LLM), Edge TTS / Microsoft Azure TTS                                         |
+| **Video Processing** | FFmpeg                                                                                      |
 
 ## Quick Start 🚀
 
@@ -76,11 +76,11 @@ environment:
   - PORT=8080
   - STORAGE_PATH=/data
   - BGM_PATH=/assets/bgm
-  - TZ=Asia/Taipei                     # Timezone setting
-  - AZURE_TTS_KEY=your_azure_key       # Optional (Not required if using Edge TTS)
+  - TZ=Asia/Taipei # Timezone setting
+  - AZURE_TTS_KEY=your_azure_key # Optional (Not required if using Edge TTS)
   - AZURE_TTS_REGION=your_azure_region # Optional (Not required if using Edge TTS)
-  - GEMINI_API_KEY=your_gemini_key     # Required
-  - AI_MODEL=gemini-2.5-flash-lite     # Gemini Model Version
+  - GEMINI_API_KEY=your_gemini_key # Required
+  - AI_MODEL=gemini-3.1-flash-lite # Gemini Model Version
 ```
 
 ### 3. Start Services
@@ -93,46 +93,45 @@ docker-compose up -d --build
 
 ### 4. Access Application
 
-*   **Web Interface**: [http://localhost:8080](http://localhost:8080)
-*   **API Docs**: [http://localhost:8080/swagger.html](http://localhost:8080/swagger.html)
+- **Web Interface**: [http://localhost:8080](http://localhost:8080)
+- **API Docs**: [http://localhost:8080/swagger.html](http://localhost:8080/swagger.html)
 
 ## Requirements 📦
 
 The following are descriptions of key environment variables in `docker-compose.yml`:
 
-| Variable Name | Description | Required | Example Value |
-| :--- | :--- | :---: | :--- |
-| `PORT` | Application service port | ○ | `8080` |
-| `STORAGE_PATH` | Task data storage path | ○ | `/data` |
-| `BGM_PATH` | Background music storage path | ○ | `/assets/bgm` |
-| `TZ` | Timezone setting | ○ | `Asia/Taipei` |
-| `GEMINI_API_KEY` | Google Gemini API Key | ✓ | `AIza...` |
-| `AI_MODEL` | Gemini Model Version | ○ | `gemini-2.5-flash-lite` |
-| `AZURE_TTS_KEY` | Azure TTS Service Key | ✗ | `...` |
-| `AZURE_TTS_REGION` | Azure TTS Service Region | ✗ | `japaneast` |
+| Variable Name      | Description                   | Required | Example Value           |
+| :----------------- | :---------------------------- | :------: | :---------------------- |
+| `PORT`             | Application service port      |    ○     | `8080`                  |
+| `STORAGE_PATH`     | Task data storage path        |    ○     | `/data`                 |
+| `BGM_PATH`         | Background music storage path |    ○     | `/assets/bgm`           |
+| `TZ`               | Timezone setting              |    ○     | `Asia/Taipei`           |
+| `GEMINI_API_KEY`   | Google Gemini API Key         |    ✓     | `AIza...`               |
+| `AI_MODEL`         | Gemini Model Version          |    ○     | `gemini-3.1-flash-lite` |
+| `AZURE_TTS_KEY`    | Azure TTS Service Key         |    ✗     | `...`                   |
+| `AZURE_TTS_REGION` | Azure TTS Service Region      |    ✗     | `japaneast`             |
 
 > ✓ Required　✗ Optional (Not required if using Edge TTS)　○ Default value available
 
 ## Usage 📖
 
 1.  **Prepare Assets** 📂
-    *   Prepare your video assets (images or videos) and background music.
-    
+    - Prepare your video assets (images or videos) and background music.
 2.  **Write Script** ✍️
-    *   Enter your video script on the Web interface.
+    - Enter your video script on the Web interface.
 
 3.  **Configure Settings** ⚙️
-    *   Select **TTS Voice Provider** (`edge_tts`, `azure_v1`, `azure_v2`).
-    *   Set **Subtitle Style** (font, color, size, outline).
-    *   Adjust **Video Settings** (resolution, fps, background blur, transition effects).
-    *   Optionally enable **Auto Duration Distribution**.
-    *   Configure **Cover Style** (title, background type, title voice generation).
+    - Select **TTS Voice Provider** (`edge_tts`, `azure_v1`, `azure_v2`).
+    - Set **Subtitle Style** (font, color, size, outline).
+    - Adjust **Video Settings** (resolution, fps, background blur, transition effects).
+    - Optionally enable **Auto Duration Distribution**.
+    - Configure **Cover Style** (title, background type, title voice generation).
 
 4.  **Submit Task** ▶️
-    *   Click "Create Task" and the system will automatically start processing.
+    - Click "Create Task" and the system will automatically start processing.
 
 5.  **Download Result** 🎬
-    *   Once the task is complete, you can preview and download the generated video.
+    - Once the task is complete, you can preview and download the generated video.
 
 ## API Docs 📄
 

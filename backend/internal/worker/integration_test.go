@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"context"
 	"image"
 	"image/color"
 	"image/png"
@@ -52,14 +53,14 @@ func TestProcessPipeline(t *testing.T) {
 		BGM:           job.BGMSetting{Source: "", Volume: 0.0},
 		SubtitleStyle: job.SubtitleStyle{Size: 28, Color: "FFFFFF", MaxLineWidth: 18},
 	}
-	rec, err := job.NewJobRecord(req)
+	rec, err := job.NewJobRecord(req, tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := store.InsertJob(rec); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.process(rec); err != nil {
+	if err := w.process(context.Background(), rec); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(rec.BasePath, "output.mp4")); err != nil {

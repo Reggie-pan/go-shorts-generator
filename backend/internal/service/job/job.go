@@ -3,6 +3,7 @@ package job
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -195,10 +196,13 @@ func (r *JobCreateRequest) Validate() error {
 	return nil
 }
 
-func NewJobRecord(req JobCreateRequest) (*Record, error) {
+func NewJobRecord(req JobCreateRequest, storagePath string) (*Record, error) {
 	now := time.Now()
 	id := uuid.NewString()
-	base := "/data/jobs/" + id
+	if storagePath == "" {
+		storagePath = "/data"
+	}
+	base := filepath.Join(storagePath, "jobs", id)
 	return &Record{
 		ID:        id,
 		Status:    StatusPending,

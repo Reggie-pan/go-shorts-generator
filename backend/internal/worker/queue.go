@@ -1,6 +1,9 @@
 package worker
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 type Queue struct {
 	ch     chan string
@@ -23,6 +26,15 @@ func (q *Queue) Pop() string {
 	return <-q.ch
 }
 
+func (q *Queue) PopWithContext(ctx context.Context) (string, error) {
+	select {
+	case id := <-q.ch:
+		return id, nil
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+}
+
 func (q *Queue) Cancel(id string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -33,4 +45,10 @@ func (q *Queue) IsCanceled(id string) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return q.cancel[id]
+}
+
+func (q *Queue) RemoveCancel(id string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	delete(q.cancel, id)
 }

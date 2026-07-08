@@ -1,6 +1,7 @@
 package media
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,14 +15,16 @@ import (
 )
 
 // GenerateCoverVideo 生成封面影片片段
+// - ctx: Context
 // - base: 工作目錄
 // - coverStyle: 封面樣式設定
 // - subtitleStyle: 字幕樣式（複用於標題文字）
 // - resolution: 影片解析度
 // - voicePath: 標題語音檔路徑（若無語音則傳空字串）
 // - duration: 封面時長（秒）
+// - threads: FFmpeg 執行緒數
 // 返回封面影片路徑
-func GenerateCoverVideo(base string, coverStyle job.CoverStyle, subtitleStyle job.SubtitleStyle, resolution string, voicePath string, duration float64) (string, error) {
+func GenerateCoverVideo(ctx context.Context, base string, coverStyle job.CoverStyle, subtitleStyle job.SubtitleStyle, resolution string, voicePath string, duration float64, threads string) (string, error) {
 	coverDir := filepath.Join(base, "cover")
 	if err := os.MkdirAll(coverDir, 0o755); err != nil {
 		return "", err
@@ -40,7 +43,7 @@ func GenerateCoverVideo(base string, coverStyle job.CoverStyle, subtitleStyle jo
 
 	// 1. 生成背景
 	bgPath := filepath.Join(coverDir, "background.png")
-	if err := generateBackground(bgPath, coverStyle, w, h); err != nil {
+	if err := generateBackground(ctx, bgPath, coverStyle, w, h); err != nil {
 		return "", fmt.Errorf("生成封面背景失敗: %v", err)
 	}
 
@@ -62,7 +65,7 @@ func GenerateCoverVideo(base string, coverStyle job.CoverStyle, subtitleStyle jo
 		// 有語音：使用語音作為音訊，時長根據語音決定
 		// 先處理語音：轉為 pcm_s16le 44100Hz stereo
 		processedVoice := filepath.Join(coverDir, "voice_processed.wav")
-		if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+		if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 			"-i", voicePath,
 			"-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2",
 			processedVoice); err != nil {
@@ -87,7 +90,7 @@ func GenerateCoverVideo(base string, coverStyle job.CoverStyle, subtitleStyle jo
 		if extendDur > 0 {
 			// 生成延長靜音
 			silencePath := filepath.Join(coverDir, "extend_silence.wav")
-			if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+			if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 				"-f", "lavfi", "-t", fmt.Sprintf("%.2f", extendDur), "-i", "anullsrc=r=44100:cl=stereo",
 				"-c:a", "pcm_s16le",
 				silencePath); err != nil {
@@ -98,7 +101,7 @@ func GenerateCoverVideo(base string, coverStyle job.CoverStyle, subtitleStyle jo
 				concatListPath := filepath.Join(coverDir, "voice_concat.txt")
 				concatContent := fmt.Sprintf("file '%s'\nfile '%s'\n", processedVoice, silencePath)
 				if err := os.WriteFile(concatListPath, []byte(concatContent), 0o644); err == nil {
-					if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+					if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 						"-f", "concat", "-safe", "0", "-i", concatListPath,
 						"-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2",
 						mergedVoicePath); err == nil {
@@ -110,12 +113,12 @@ func GenerateCoverVideo(base string, coverStyle job.CoverStyle, subtitleStyle jo
 
 		// 生成封面影片
 		filterComplex := fmt.Sprintf("[0:v]%s[vout]", titleFilter)
-		if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+		if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 			"-loop", "1", "-t", fmt.Sprintf("%.2f", totalDur), "-i", bgPath,
 			"-i", processedVoice,
 			"-filter_complex", filterComplex,
 			"-map", "[vout]", "-map", "1:a",
-			"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2",
+			"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", threads,
 			"-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest",
 			coverOutput); err != nil {
 			return "", fmt.Errorf("生成封面影片失敗: %v", err)
@@ -123,12 +126,12 @@ func GenerateCoverVideo(base string, coverStyle job.CoverStyle, subtitleStyle jo
 	} else {
 		// 無語音：使用靜音，時長根據 duration 決定
 		filterComplex := fmt.Sprintf("[0:v]%s[vout]", titleFilter)
-		if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+		if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 			"-loop", "1", "-t", fmt.Sprintf("%.2f", duration), "-i", bgPath,
 			"-f", "lavfi", "-t", fmt.Sprintf("%.2f", duration), "-i", "anullsrc=r=44100:cl=stereo",
 			"-filter_complex", filterComplex,
 			"-map", "[vout]", "-map", "1:a",
-			"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2",
+			"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", threads,
 			"-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest",
 			coverOutput); err != nil {
 			return "", fmt.Errorf("生成封面影片失敗: %v", err)
@@ -139,18 +142,18 @@ func GenerateCoverVideo(base string, coverStyle job.CoverStyle, subtitleStyle jo
 }
 
 // generateBackground 根據設定生成背景圖片
-func generateBackground(outputPath string, coverStyle job.CoverStyle, w, h int) error {
+func generateBackground(ctx context.Context, outputPath string, coverStyle job.CoverStyle, w, h int) error {
 	timeout := 1 * time.Minute
 
 	if coverStyle.BackgroundType == "image" {
 		// 使用用戶圖片
 		imgPath := coverStyle.BackgroundImage
 
-		// 如果是 URL，先下載
+		// 如果是 URL，先下載 (P2: 改用 Go 原生下載取代外部 curl 進程)
 		if strings.HasPrefix(imgPath, "http://") || strings.HasPrefix(imgPath, "https://") {
 			downloadPath := strings.TrimSuffix(outputPath, ".png") + "_download.jpg"
-			if _, err := utils.RunCmd("curl", "-f", "-L", "-o", downloadPath, imgPath); err != nil {
-				return fmt.Errorf("下載背景圖片失敗: %v", err)
+			if err := utils.DownloadFile(imgPath, downloadPath); err != nil {
+				return fmt.Errorf("下載背景圖片失敗: %w", err)
 			}
 			imgPath = downloadPath
 		}
@@ -163,7 +166,7 @@ func generateBackground(outputPath string, coverStyle job.CoverStyle, w, h int) 
 			vf += ",boxblur=20:5"
 		}
 
-		if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+		if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 			"-i", imgPath,
 			"-vf", vf,
 			"-frames:v", "1",
@@ -183,7 +186,7 @@ func generateBackground(outputPath string, coverStyle job.CoverStyle, w, h int) 
 			vf += ",boxblur=20:5"
 		}
 
-		if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+		if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 			"-f", "lavfi", "-i", vf,
 			"-frames:v", "1",
 			outputPath); err != nil {
@@ -227,7 +230,7 @@ func generateBackground(outputPath string, coverStyle job.CoverStyle, w, h int) 
 			vf += ",boxblur=10:3"
 		}
 
-		if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+		if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 			"-f", "lavfi", "-i", vf,
 			"-frames:v", "1",
 			outputPath); err != nil {
@@ -238,7 +241,7 @@ func generateBackground(outputPath string, coverStyle job.CoverStyle, w, h int) 
 			if coverStyle.BackgroundBlur {
 				simpleVf += ",boxblur=20:5"
 			}
-			if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+			if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 				"-f", "lavfi", "-i", simpleVf,
 				"-frames:v", "1",
 				outputPath); err != nil {

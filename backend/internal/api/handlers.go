@@ -70,7 +70,7 @@ func (h *Handlers) CreateJob(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	record, err := job.NewJobRecord(req)
+	record, err := job.NewJobRecord(req, h.Config.StoragePath)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -152,7 +152,10 @@ func (h *Handlers) CancelJob(w http.ResponseWriter, r *http.Request) {
 	rec.Progress = 0
 	rec.ErrorMessage = "使用者取消"
 	rec.UpdatedAt = time.Now()
-	_ = h.Store.UpdateJob(rec)
+	// B6: 處理 UpdateJob 錯誤並記錄日誌
+	if err := h.Store.UpdateJob(rec); err != nil {
+		log.Error().Err(err).Str("job", id).Msg("取消任務時更新資料庫失敗")
+	}
 	h.Queue.Cancel(id)
 	_ = os.RemoveAll(rec.BasePath)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "canceled"})
@@ -490,7 +493,8 @@ func (h *Handlers) PreviewSubtitle(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	// 限制上傳大小為 500MB
 	r.Body = http.MaxBytesReader(w, r.Body, 500<<20)
-	if err := r.ParseMultipartForm(500 << 20); err != nil {
+	// B4: 優化記憶體使用率，將 maxMemory 降至 32MB，大於 32MB 會自動暫存於硬碟
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "檔案太大或格式錯誤"})
 		return
 	}
@@ -511,7 +515,11 @@ func (h *Handlers) UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 使用專屬暫存目錄避免衝突
 	tmpDir := filepath.Join(os.TempDir(), "go-shorts-generator")
-	os.MkdirAll(tmpDir, 0o755)
+	if err := os.MkdirAll(tmpDir, 0o755); err != nil {
+		log.Error().Err(err).Msg("建立上傳暫存目錄失敗")
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "建立暫存目錄失敗"})
+		return
+	}
 	dstName := fmt.Sprintf("upload_%d%s", time.Now().UnixNano(), ext)
 	dstPath := filepath.Join(tmpDir, dstName)
 
@@ -664,51 +672,22 @@ func (h *Handlers) AddProgressBarOnly(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. 判斷是否為 GIF
-	loopOpt1, loopOpt2 := "-loop", "1"
-	if strings.ToLower(filepath.Ext(localImg)) == ".gif" {
-		loopOpt1, loopOpt2 = "-ignore_loop", "0"
-	}
-
-	// 6. 設定位移座標與 Filter
-	xExpr, yExpr := "0", "0"
+	// 5. 利用 media 公用函式構建進度條的 FFmpeg 參數與 filter (D5)
 	dir := req.ProgressBar.Direction
 	if dir == "" {
 		dir = "bottom"
 	}
+	args, filterComplex := media.BuildProgressBarFilter(localImg, dir, dur, localVideo, "")
 
-	switch dir {
-	case "top":
-		xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
-		yExpr = "0"
-	case "bottom":
-		xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", dur)
-		yExpr = "H-h"
-	case "left":
-		xExpr = "0"
-		yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
-	case "right":
-		xExpr = "W-w"
-		yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", dur)
-	}
-
-	filterComplex := fmt.Sprintf(
-		"[1:v]format=rgba,scale=150:150:force_original_aspect_ratio=decrease[pbar];"+
-			"[0:v][pbar]overlay=%s:%s:shortest=1",
-		xExpr, yExpr,
-	)
-
-	cmdArgs := []string{
-		"-y",
-		"-i", localVideo,
-		loopOpt1, loopOpt2, "-i", localImg,
+	cmdArgs := append(args,
 		"-filter_complex", filterComplex,
 		"-c:v", "libx264",
 		"-preset", "veryfast",
 		"-crf", "23",
+		"-threads", h.Config.FFmpegThreads,
 		"-c:a", "copy",
 		outputVideo,
-	}
+	)
 
 	log.Info().Str("filter", filterComplex).Msg("開始執行 FFmpeg 合成進度條...")
 	if _, err := utils.RunCmdTimeout(5*time.Minute, "ffmpeg", cmdArgs...); err != nil {

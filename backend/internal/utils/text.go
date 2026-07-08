@@ -6,14 +6,17 @@ import (
 	"unicode/utf8"
 )
 
+var (
+	spacingRe1 = regexp.MustCompile(`([\p{Han}])([A-Za-z0-9])`)
+	spacingRe2 = regexp.MustCompile(`([A-Za-z0-9])([\p{Han}])`)
+)
+
 // AutoSpacing 為中文/英文之間加入空格，避免黏在一起
 func AutoSpacing(s string) string {
 	// 中文後接英文數字
-	p1 := regexp.MustCompile(`([\p{Han}])([A-Za-z0-9])`)
-	s = p1.ReplaceAllString(s, "$1 $2")
+	s = spacingRe1.ReplaceAllString(s, "$1 $2")
 	// 英文數字接中文
-	p2 := regexp.MustCompile(`([A-Za-z0-9])([\p{Han}])`)
-	s = p2.ReplaceAllString(s, "$1 $2")
+	s = spacingRe2.ReplaceAllString(s, "$1 $2")
 	return strings.TrimSpace(s)
 }
 

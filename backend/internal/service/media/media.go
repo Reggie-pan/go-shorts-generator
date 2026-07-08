@@ -1,6 +1,7 @@
 package media
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,10 +41,8 @@ func PrepareMaterials(base string, mats []job.Material) ([]string, error) {
 		target = target + ext
 		m.Path = strings.TrimSpace(m.Path)
 		if strings.HasPrefix(m.Path, "http://") || strings.HasPrefix(m.Path, "https://") {
-			// 加入 -f (fail) 參數，下載 404/500 錯誤頁面
-			out, err := utils.RunCmd("curl", "-f", "-L", "-o", target, m.Path)
-			if err != nil {
-				return nil, fmt.Errorf("下載素材失敗: %s %v", out, err)
+			if err := utils.DownloadFile(m.Path, target); err != nil {
+				return nil, fmt.Errorf("下載素材失敗: %w", err)
 			}
 		} else if m.Source == "upload" {
 			// 如果是上傳檔案，複製 (Copy) 到目標位置，保留原檔以備重試
@@ -128,7 +127,7 @@ type Segment struct {
 }
 
 // MakeSegments 製作影片片段並 concat
-func MakeSegments(base, resolution string, fps int, bgColor string, segments []Segment, transition string, blurBackground bool, onProgress func(int)) (string, error) {
+func MakeSegments(ctx context.Context, base, resolution string, fps int, bgColor string, segments []Segment, transition string, blurBackground bool, threads string, onProgress func(int)) (string, error) {
 	outDir := filepath.Join(base, "segments")
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return "", err
@@ -156,10 +155,10 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 	var vf string
 	if blurBackground {
 		// 模糊背景邏輯 (垂直影片)
-		// 優化版：減少縮放次數以降低 CPU 使用
-		// 1. 背景層：直接縮放到小尺寸 -> 模糊 -> 放大回目標尺寸
-		// 2. 前景層：縮放並適應 (decrease)
-		// 3. Overlay
+		// 採用低解析度預模糊再放大技術，以大幅節省 Celeron CPU 在高清模糊上的大矩陣計算開銷：
+		// 1. 背景層：直接縮放到小尺寸 (270p) -> 執行輕量 boxblur 模糊 -> 放大回目標解析度
+		// 2. 前景層：縮放並適應目標比例 (decrease)
+		// 3. 疊加合併 (Overlay)
 		vf = fmt.Sprintf("split[bg][fg];[bg]scale=270:-1,boxblur=8:4,scale=%d:%d:flags=bilinear[bg_blurred];[fg]scale=%d:%d:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(W-w)/2:(H-h)/2,setsar=1,fps=%d",
 			w, h, w, h, fps)
 	} else {
@@ -273,9 +272,9 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 					"-f", "lavfi", "-t", fmt.Sprintf("%.2f", durationSec), "-i", "anullsrc=r=44100:cl=stereo",
 					"-filter_complex", finalFilter,
 					"-map", "[v]", "-map", "1:a",
-					"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target}
+					"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", threads, "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target}
 
-				if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", cmdArgs...); err != nil {
+				if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", cmdArgs...); err != nil {
 					return "", fmt.Errorf("製作圖片片段失敗(seg %d): %v", i, err)
 				}
 			} else {
@@ -284,12 +283,12 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 				// 注意：durationSec 已經包含了 overlap (如果是中間片段)。
 				// 我們希望影片播完後，停留在最後一幀直到 durationSec 結束。
 				// 所以使用 finalVf (含 tpad)。
-				if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+				if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 					"-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
 					"-f", "lavfi", "-t", fmt.Sprintf("%.2f", durationSec), "-i", "anullsrc=r=44100:cl=stereo",
 					"-filter_complex", fmt.Sprintf("[0:v]%s[v]", finalVf),
 					"-map", "[v]", "-map", "1:a",
-					"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
+					"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", threads, "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
 					return "", fmt.Errorf("製作影片片段(靜音 seg %d)失敗: %v", i, err)
 				}
 			}
@@ -309,19 +308,19 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 			// 套用音量調整 (volume 濾鏡)
 			filterComplex := fmt.Sprintf("[0:v]%s[v];[0:a]volume=%.2f,aformat=sample_rates=44100:channel_layouts=stereo,apad=whole_dur=%.2f[a]", finalVf, seg.Volume, durationSec)
 
-			if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+			if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 				"-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
 				"-filter_complex", filterComplex,
 				"-map", "[v]", "-map", "[a]",
-				"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
+				"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", threads, "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
 
 				// 若失敗，可能是沒有音軌，嘗試靜音模式重試
-				if _, err := utils.RunCmdTimeout(timeout, "ffmpeg", "-y",
+				if _, err := utils.RunCmdTimeoutContext(ctx, timeout, "ffmpeg", "-y",
 					"-t", fmt.Sprintf("%.2f", durationSec), "-i", seg.Path,
 					"-f", "lavfi", "-t", fmt.Sprintf("%.2f", durationSec), "-i", "anullsrc=r=44100:cl=stereo",
 					"-filter_complex", fmt.Sprintf("[0:v]%s[v]", finalVf),
 					"-map", "[v]", "-map", "1:a",
-					"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
+					"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", threads, "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", "-shortest", target); err != nil {
 					return "", fmt.Errorf("製作影片片段失敗(重試靜音 seg %d): %v", i, err)
 				}
 			}
@@ -360,7 +359,7 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 		concatFile := filepath.Join(outDir, "list.txt")
 		_ = os.WriteFile(concatFile, []byte(strings.Join(list, "\n")), 0o644)
 
-		if _, err := utils.RunCmdTimeout(2*time.Minute, "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatFile, "-c", "copy", final); err != nil {
+		if _, err := utils.RunCmdTimeoutContext(ctx, 2*time.Minute, "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concatFile, "-c", "copy", final); err != nil {
 			return "", fmt.Errorf("合併片段失敗: %v", err)
 		}
 	} else {
@@ -421,12 +420,12 @@ func MakeSegments(base, resolution string, fps int, bgColor string, segments []S
 		for _, f := range segmentFiles {
 			args = append(args, "-i", f)
 		}
-		args = append(args, "-filter_complex", filterComplex, "-map", "[outv]", "-map", "[outa]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", final)
+		args = append(args, "-filter_complex", filterComplex, "-map", "[outv]", "-map", "[outa]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", threads, "-c:a", "aac", "-b:a", "128k", "-pix_fmt", "yuv420p", final)
 
 		// Debug Log
-		fmt.Printf("Transition FFmpeg Args: %v\n", args)
+		log.Debug().Interface("args", args).Msg("Transition FFmpeg Args")
 
-		if out, err := utils.RunCmdTimeout(10*time.Minute, "ffmpeg", args...); err != nil {
+		if out, err := utils.RunCmdTimeoutContext(ctx, 10*time.Minute, "ffmpeg", args...); err != nil {
 			return "", fmt.Errorf("轉場合併失敗: %v, Output: %s", err, out)
 		}
 	}
@@ -512,7 +511,7 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 	}
 
 	content := b.String()
-	fmt.Printf("Generated ASS Content:\n%s\n", content)
+	log.Debug().Str("content", content).Msg("Generated ASS Content")
 
 	path := filepath.Join(base, "subtitle.ass")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -672,4 +671,44 @@ func GeneratePreviewImage(base string, style job.SubtitleStyle, text string, bgC
 	}
 
 	return outPath, nil
+}
+
+// BuildProgressBarFilter 構建進度條 overlay filter 與 FFmpeg 參數 (D5)
+func BuildProgressBarFilter(progressBarInput string, direction string, finalDuration float64, videoPath string, videoFilter string) (args []string, pbarFilter string) {
+	if progressBarInput == "" {
+		return []string{"-y", "-i", videoPath}, fmt.Sprintf("[0:v]%s", videoFilter)
+	}
+	loopOpt1, loopOpt2 := "-loop", "1"
+	if strings.ToLower(filepath.Ext(progressBarInput)) == ".gif" {
+		loopOpt1, loopOpt2 = "-ignore_loop", "0"
+	}
+	args = []string{"-y", "-i", videoPath, loopOpt1, loopOpt2, "-i", progressBarInput}
+
+	xExpr, yExpr := "0", "0"
+	switch direction {
+	case "top":
+		xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", finalDuration)
+		yExpr = "0"
+	case "bottom":
+		xExpr = fmt.Sprintf("(t/%.3f)*(W-w)", finalDuration)
+		yExpr = "H-h"
+	case "left":
+		xExpr = "0"
+		yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", finalDuration)
+	case "right":
+		xExpr = "W-w"
+		yExpr = fmt.Sprintf("(t/%.3f)*(H-h)", finalDuration)
+	}
+
+	vsubName := "[0:v]"
+	var filterParts []string
+	if videoFilter != "" {
+		filterParts = append(filterParts, fmt.Sprintf("[0:v]%s[vsub]", videoFilter))
+		vsubName = "[vsub]"
+	}
+	filterParts = append(filterParts, "[1:v]format=rgba,scale=150:150:force_original_aspect_ratio=decrease[pbar]")
+	filterParts = append(filterParts, fmt.Sprintf("%s[pbar]overlay=%s:%s:shortest=1", vsubName, xExpr, yExpr))
+	pbarFilter = strings.Join(filterParts, ";")
+
+	return args, pbarFilter
 }

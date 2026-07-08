@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/rs/zerolog/log"
 
 	"github.com/Reggie-pan/go-shorts-generator/internal/config"
 	"github.com/Reggie-pan/go-shorts-generator/internal/storage"
@@ -50,12 +49,13 @@ func spaFileServer(dir string) http.Handler {
 
 func NewRouter(cfg *config.Config, store *storage.Store, q *worker.Queue) http.Handler {
 	r := mux.NewRouter()
+
+	// 中介軟體：添加 CORS 標頭至全域以支援 BGM 等靜態資源跨域存取 (B7)
+	r.Use(corsMiddleware)
+
 	api := r.PathPrefix("/api/v1").Subrouter()
 
 	h := &Handlers{Config: cfg, Store: store, Queue: q}
-
-	// 中介軟體：添加 CORS 標頭
-	api.Use(corsMiddleware)
 
 	api.HandleFunc("/jobs", h.CreateJob).Methods("POST")
 	api.HandleFunc("/jobs", h.ListJobs).Methods("GET")
@@ -80,10 +80,5 @@ func NewRouter(cfg *config.Config, store *storage.Store, q *worker.Queue) http.H
 	// 使用 SPA 文件服務器處理前端路由
 	r.PathPrefix("/").Handler(spaFileServer("/app/public"))
 
-	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Warn().Str("path", r.URL.Path).Msg("路徑不存在")
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte("not found"))
-	})
 	return r
 }
