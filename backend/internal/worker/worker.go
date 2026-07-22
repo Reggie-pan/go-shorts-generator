@@ -551,7 +551,8 @@ func (w *Worker) process(ctx context.Context, rec *job.Record) error {
 		reEncodedCover := filepath.Join(base, "cover_reencoded.mp4")
 		if _, err := utils.RunCmdTimeoutContext(ctx, 2*time.Minute, "ffmpeg", "-y",
 			"-i", coverVideoPath,
-			"-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+			"-vf", "setsar=1",
+			"-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
 			"-threads", w.cfg.FFmpegThreads,
 			"-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2",
 			"-pix_fmt", "yuv420p",

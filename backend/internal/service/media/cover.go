@@ -159,7 +159,7 @@ func generateBackground(ctx context.Context, outputPath string, coverStyle job.C
 		}
 
 		// 縮放到目標尺寸
-		vf := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", w, h, w, h)
+		vf := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1", w, h, w, h)
 
 		// 如果需要模糊
 		if coverStyle.BackgroundBlur {
@@ -181,7 +181,7 @@ func generateBackground(ctx context.Context, outputPath string, coverStyle job.C
 			bgColor = strings.TrimPrefix(colors[0], "#")
 		}
 
-		vf := fmt.Sprintf("color=c=0x%s:s=%dx%d:d=0.1", bgColor, w, h)
+		vf := fmt.Sprintf("color=c=0x%s:s=%dx%d:d=0.1,setsar=1", bgColor, w, h)
 		if coverStyle.BackgroundBlur {
 			vf += ",boxblur=20:5"
 		}
@@ -225,7 +225,7 @@ func generateBackground(ctx context.Context, outputPath string, coverStyle job.C
 			b0, h, b1, b0,
 		)
 
-		vf := fmt.Sprintf("color=c=black:s=%dx%d:d=0.1,%s", w, h, geqFilter)
+		vf := fmt.Sprintf("color=c=black:s=%dx%d:d=0.1,%s,setsar=1", w, h, geqFilter)
 		if coverStyle.BackgroundBlur {
 			vf += ",boxblur=10:3"
 		}
@@ -237,7 +237,7 @@ func generateBackground(ctx context.Context, outputPath string, coverStyle job.C
 			// 降級使用純色
 			log.Warn().Err(err).Msg("漸層生成失敗，降級使用純色背景")
 			bgColor := colors[0]
-			simpleVf := fmt.Sprintf("color=c=0x%s:s=%dx%d:d=0.1", bgColor, w, h)
+			simpleVf := fmt.Sprintf("color=c=0x%s:s=%dx%d:d=0.1,setsar=1", bgColor, w, h)
 			if coverStyle.BackgroundBlur {
 				simpleVf += ",boxblur=20:5"
 			}
@@ -277,12 +277,16 @@ func buildTitleFilter(title string, style job.SubtitleStyle, w, h int) string {
 	color := strings.TrimPrefix(style.Color, "#")
 	if color == "" {
 		color = "FFFFFF"
+	} else if len(color) < 6 {
+		color = strings.Repeat("0", 6-len(color)) + color
 	}
 
 	// 處理描邊顏色
 	outlineColor := strings.TrimPrefix(style.OutlineColor, "#")
 	if outlineColor == "" {
 		outlineColor = "000000"
+	} else if len(outlineColor) < 6 {
+		outlineColor = strings.Repeat("0", 6-len(outlineColor)) + outlineColor
 	}
 
 	// 處理字型大小 (放大 1.5 倍作為標題)
@@ -303,7 +307,7 @@ func buildTitleFilter(title string, style job.SubtitleStyle, w, h int) string {
 
 	// 建立 drawtext 濾鏡
 	// 置中顯示
-	filter := fmt.Sprintf("drawtext=text='%s':fontfile='':font='%s':fontsize=%d:fontcolor=0x%s:borderw=%.1f:bordercolor=0x%s:x=(w-text_w)/2:y=(h-text_h)/2",
+	filter := fmt.Sprintf("drawtext=text='%s':font='%s':fontsize=%d:fontcolor=0x%s:borderw=%.1f:bordercolor=0x%s:x=(w-text_w)/2:y=(h-text_h)/2",
 		escapedTitle, font, fontSize, color, outlineWidth, outlineColor)
 
 	return filter
