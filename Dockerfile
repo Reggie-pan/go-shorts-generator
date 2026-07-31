@@ -1,12 +1,13 @@
-FROM golang:1.26-bookworm AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS backend-builder
 RUN apt-get update && apt-get install -y ffmpeg espeak curl fonts-noto-cjk fontconfig && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/backend
 COPY backend/go.mod backend/go.sum* ./
 RUN go mod download
 COPY backend/. .
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/server ./cmd/server
+ARG TARGETOS TARGETARCH
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o /app/server ./cmd/server
 
-FROM node:20-bullseye AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:20-bullseye AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
