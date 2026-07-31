@@ -6,16 +6,17 @@ import ToastContainer from '../components/ToastContainer'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { translations } from '../utils/i18n'
 
-const blankMaterial = { type: 'image', source: 'url', path: '', duration_sec: 3 }
+const blankMaterial = { type: 'image', source: 'url', path: '', duration_sec: 3, effect: 'none', mute: false, volume: 1 }
 const defaultRequest = {
   script: '這是一段示範腳本。\n第二句會跟字幕同步。',
   materials: [{ ...blankMaterial, path: 'https://picsum.photos/720/1280', duration_sec: 3 }],
   tts: { provider: 'edge_tts', voice: '', locale: 'en-US', speed: 1, pitch: 0 },
-  video: { resolution: '1080x1920', fps: 30, speed: 1, background: '000000' },
+  video: { resolution: '1080x1920', fps: 30, background: '000000', blur_background: false, transition: 'none' },
   bgm: { source: 'preset', path: 'random', volume: 0.2 },
   subtitle_style: { font: 'Noto Sans TC', size: 16, color: 'FFFFFF', y_offset: 70, max_line_width: 16, outline_width: 0.1, outline_color: '000000' },
-  cover_style: { enabled: false, title: '', title_voice: false, duration: 2, extend_duration: 0, background_type: 'gradient', background_blur: true, gradient_colors: ['FF6B9D', 'FFE66D', '4ECDC4'], background_image: '', title_style: { font: 'Noto Sans TC', size: 24, color: 'FFFFFF', outline_width: 2, outline_color: '000000' } },
-  progress_bar: { enabled: false, image_path: '', direction: 'bottom' }
+  cover_style: { enabled: false, title: '', title_voice: false, duration: 2, extend_duration: 0, background_type: 'gradient', background_blur: true, gradient_colors: ['FF6B9D', 'FFE66D', '4ECDC4'], background_image: '', title_style: { font: 'Noto Sans TC', size: 24, color: 'FFFFFF', y_offset: 0, max_line_width: 0, outline_width: 2, outline_color: '000000' } },
+  progress_bar: { enabled: false, image_path: '', direction: 'bottom' },
+  auto_distribute_duration: false
 }
 
 export default function App() {
