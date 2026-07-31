@@ -180,6 +180,7 @@ func (w *Worker) process(ctx context.Context, rec *job.Record) error {
 		}
 		lines = utils.SplitScript(rec.Request.Script, rec.Request.SubtitleStyle.MaxLineWidth)
 	}
+
 	for i, line := range lines {
 		lines[i] = utils.AutoSpacing(line)
 	}

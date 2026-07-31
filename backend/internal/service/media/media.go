@@ -435,7 +435,7 @@ func MakeSegments(ctx context.Context, base, resolution string, fps int, bgColor
 
 // BuildASS 依樣式產生字幕檔，並處理高度自動放大
 func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, resolution string) (string, job.SubtitleStyle, error) {
-	_, resY := 1080, 1920
+	resX, resY := 1080, 1920
 	if style.Font == "" {
 		style.Font = "Noto Sans CJK TC"
 	}
@@ -448,6 +448,9 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 	}
 	if resolution != "" {
 		if p := strings.Split(resolution, "x"); len(p) == 2 {
+			if w, err := strconv.Atoi(p[0]); err == nil {
+				resX = w
+			}
 			if h, err := strconv.Atoi(p[1]); err == nil {
 				resY = h
 			}
@@ -456,6 +459,12 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 	// 處理預設值與在線設定修正
 	if style.Size <= 0 {
 		style.Size = 48
+	} else if style.Size < 24 {
+		// 若傳入小於 24 的字號（舊有 288p 相對畫布座標系），自動按當前 resY 等比例換算至真實像素
+		style.Size = int(float64(style.Size) * (float64(resY) / 288.0))
+		if style.Size < 40 {
+			style.Size = 40
+		}
 	}
 	if style.YOffset <= 0 {
 		if resY >= 1200 {
@@ -484,15 +493,21 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 		outlineColor = "00000000"
 	}
 
+	// 計算動態 5% 安全邊距
+	margin := int(float64(resX) * 0.05)
+	if margin < 30 {
+		margin = 30
+	}
+
 	var b strings.Builder
 	b.WriteString("[Script Info]\n")
 	b.WriteString("ScriptType: v4.00+\n")
-	// b.WriteString(fmt.Sprintf("PlayResX: %d\n", resX))
-	// b.WriteString(fmt.Sprintf("PlayResY: %d\n", resY))
+	b.WriteString(fmt.Sprintf("PlayResX: %d\n", resX))
+	b.WriteString(fmt.Sprintf("PlayResY: %d\n", resY))
 	b.WriteString("[V4+ Styles]\n")
 	b.WriteString("Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n")
-	// BorderStyle=1，Outline=style.OutlineWidth，Shadow=0，Alignment=2（正中央），MarginL/R=20，MarginV=YOffset
-	b.WriteString(fmt.Sprintf("Style: Default,%s,%d,&H%s,&H00FFFFFF,&H%s,&H64000000,0,0,0,0,100,100,0,0,1,%.1f,0,2,20,20,%d,1\n", style.Font, style.Size, color, outlineColor, style.OutlineWidth, style.YOffset))
+	// BorderStyle=1，Outline=style.OutlineWidth，Shadow=0，Alignment=2（正中央），MarginL/R=margin，MarginV=YOffset
+	b.WriteString(fmt.Sprintf("Style: Default,%s,%d,&H%s,&H00FFFFFF,&H%s,&H64000000,0,0,0,0,100,100,0,0,1,%.1f,0,2,%d,%d,%d,1\n", style.Font, style.Size, color, outlineColor, style.OutlineWidth, margin, margin, style.YOffset))
 	b.WriteString("[Events]\n")
 	b.WriteString("Format: Layer, Start, End, Style, Text\n")
 	for _, seg := range segments {

@@ -36,12 +36,12 @@ Your task is to segment the provided text into natural, semantically complete su
 
 Target Audience: The video is likely in Chinese or English.
 Constraints:
-1. Max characters per segment: %d.
+1. Max characters per segment: %d (STRICT HARD CEILING - DO NOT EXCEED).
 2. Separator: Use "|||" to separate distinct time-based segments.
 3. No Line Breaks: Do NOT use "\n" or any other line break characters within a segment.
 4. Remove Punctuation: REMOVE punctuation marks (e.g., ，。？！「」?!), BUT PRESERVE decimal points in numbers (e.g. 3.14) and percentage signs (%%). The output should contain ONLY text and numbers.
-5. Semantic Integrity: Each segment MUST form a complete semantic unit. DO NOT break in the middle of subject-verb-object structures or split phrases that belong together semantically. For Chinese text, keep related clauses together (e.g., "主語+動詞+受語" should stay in one segment if possible).
-6. Semantic First, Length Second: Prioritize semantic completeness over filling to max length. It's better to have a slightly shorter segment than to force-merge unrelated phrases. Only merge phrases if they are semantically connected.
+5. Semantic Integrity: Each segment MUST form a complete semantic unit. DO NOT break in the middle of subject-verb-object structures or split phrases that belong together semantically.
+6. Strict Length Ceiling: Each segment MUST NOT contain more than %d characters. If a sentence is longer than %d characters, split it at a natural grammatical pause (e.g., after conjunctions or before verbs).
 7. Output Format: Pure text with separators. No markdown, no explanations.
 
 Examples:
@@ -60,7 +60,7 @@ Welcome to the video|||Today we are going to talk about artificial intelligence
 
 Text to Segment:
 %s
-`, maxLen, text)
+`, maxLen, maxLen, maxLen, text)
 
 	resp, err := c.model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
