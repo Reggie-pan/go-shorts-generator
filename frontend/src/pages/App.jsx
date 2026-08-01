@@ -639,8 +639,11 @@ export default function App() {
             <input type="number" value={form.subtitle_style.size} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, size: Number(e.target.value) } })} />
           </div>
           <div>
-            <label>{t('yOffset')}</label>
+            <label>{t('subtitleYOffset') || t('yOffset')}</label>
             <input type="number" value={form.subtitle_style.y_offset} onChange={(e) => setForm({ ...form, subtitle_style: { ...form.subtitle_style, y_offset: Number(e.target.value) } })} />
+            <div className="hint-text" style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+              <i className="fas fa-info-circle"></i> {t('subtitleYOffsetHint') || '字幕距離影片底部的像素高度'}
+            </div>
           </div>
         </div>
         
@@ -813,7 +816,7 @@ export default function App() {
               <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className="fas fa-font"></i> {t('coverTitleStyle')}
               </h4>
-              <div className="grid grid-cols-3">
+              <div className="grid grid-cols-5">
                 <div>
                   <label>{t('font')}</label>
                   <SearchableSelect 
@@ -832,6 +835,25 @@ export default function App() {
                     type="number" 
                     value={form.cover_style?.title_style?.size || 24} 
                     onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, size: Number(e.target.value) } } })} 
+                  />
+                </div>
+                <div>
+                  <label>{t('coverYOffset') || t('yOffset')}</label>
+                  <input 
+                    type="number" 
+                    value={form.cover_style?.title_style?.y_offset || 0} 
+                    onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, y_offset: Number(e.target.value) } } })} 
+                  />
+                  <div className="hint-text" style={{ marginTop: '4px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    <i className="fas fa-info-circle"></i> {t('coverYOffsetHint') || '0 為正中央，正數往下移，負數往上移'}
+                  </div>
+                </div>
+                <div>
+                  <label>{t('maxLineWidth')}</label>
+                  <input 
+                    type="number" 
+                    value={form.cover_style?.title_style?.max_line_width || 0} 
+                    onChange={(e) => setForm({ ...form, cover_style: { ...form.cover_style, title_style: { ...form.cover_style?.title_style, max_line_width: Number(e.target.value) } } })} 
                   />
                 </div>
                 <div>

@@ -344,7 +344,8 @@
             "description": "Gradient/solid colors (Hex)",
             "example": ["FF6B9D", "FFE66D", "4ECDC4"]
           },
-          "background_image": { "type": "string", "description": "Background image path or URL (when background_type=image)" }
+          "background_image": { "type": "string", "description": "Background image path or URL (when background_type=image)" },
+          "title_style": { "$ref": "#/components/schemas/SubtitleStyle" }
         }
       },
       "ProgressBar": {

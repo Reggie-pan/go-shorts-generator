@@ -514,11 +514,18 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 		start := formatASSTime(seg.Start)
 		end := formatASSTime(seg.End)
 
-		// 自動換行邏輯：如果文本超過 max_line_width，插入 \N 換行符
+		// 自動換行邏輯：計算畫布最大容納字數，確保大字體時不超出邊界
 		text := seg.Text
-		if style.MaxLineWidth > 0 {
-			text = wrapText(text, style.MaxLineWidth)
+		maxLineWidth := style.MaxLineWidth
+		fitCount := int(float64(resX) * 0.85 / float64(style.Size))
+		if fitCount < 2 {
+			fitCount = 2
 		}
+
+		if maxLineWidth <= 0 || maxLineWidth > fitCount {
+			maxLineWidth = fitCount
+		}
+		text = wrapText(text, maxLineWidth)
 
 		// 替換換行符為 ASS 格式
 		text = strings.ReplaceAll(text, "\n", "\\N")

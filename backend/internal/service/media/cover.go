@@ -265,7 +265,7 @@ func parseHexColor(hex string) (int, int, int) {
 	return int(r), int(g), int(b)
 }
 
-// buildTitleFilter 建立標題文字濾鏡
+// buildTitleFilter 建立標題文字濾鏡 (支援多行每行皆置中對齊)
 func buildTitleFilter(title string, style job.SubtitleStyle, w, h int) string {
 	// 處理字型
 	font := style.Font
@@ -289,12 +289,11 @@ func buildTitleFilter(title string, style job.SubtitleStyle, w, h int) string {
 		outlineColor = strings.Repeat("0", 6-len(outlineColor)) + outlineColor
 	}
 
-	// 處理字型大小 (放大 1.5 倍作為標題)
+	// 處理字型大小
 	fontSize := style.Size
 	if fontSize <= 0 {
-		fontSize = 48
+		fontSize = int(48 * 1.5)
 	}
-	fontSize = int(float64(fontSize) * 1.5)
 
 	// 處理描邊寬度
 	outlineWidth := style.OutlineWidth
@@ -302,22 +301,48 @@ func buildTitleFilter(title string, style job.SubtitleStyle, w, h int) string {
 		outlineWidth = 2
 	}
 
-	// 跳脫特殊字元
-	escapedTitle := escapeDrawtext(title)
+	// 計算自動換行寬度
+	maxLineWidth := style.MaxLineWidth
+	fitCount := int(float64(w) * 0.85 / float64(fontSize))
+	if fitCount < 2 {
+		fitCount = 2
+	}
 
-	// 建立 drawtext 濾鏡
-	// 置中顯示
-	filter := fmt.Sprintf("drawtext=text='%s':font='%s':fontsize=%d:fontcolor=0x%s:borderw=%.1f:bordercolor=0x%s:x=(w-text_w)/2:y=(h-text_h)/2",
-		escapedTitle, font, fontSize, color, outlineWidth, outlineColor)
+	if maxLineWidth <= 0 || maxLineWidth > fitCount {
+		maxLineWidth = fitCount
+	}
 
-	return filter
+	// 進行文字換行並切分行
+	wrappedTitle := wrapText(title, maxLineWidth)
+	lines := strings.Split(wrappedTitle, "\n")
+
+	lineCount := len(lines)
+	lineSpacing := int(float64(fontSize) * 0.15)
+	if lineSpacing < 10 {
+		lineSpacing = 10
+	}
+	totalH := lineCount*fontSize + (lineCount-1)*lineSpacing
+
+	// 為每行產生獨立的 drawtext 濾鏡，確保每行文字都能獨立水平置中 x=(w-text_w)/2，並支援 y_offset 高度微調
+	var filters []string
+	for i, lineText := range lines {
+		escapedLine := escapeDrawtext(lineText)
+		yExpr := fmt.Sprintf("(h-%d)/2+%d", totalH, style.YOffset+i*(fontSize+lineSpacing))
+		filter := fmt.Sprintf("drawtext=text='%s':expansion=none:font='%s':fontsize=%d:fontcolor=0x%s:borderw=%.1f:bordercolor=0x%s:x=(w-text_w)/2:y=%s",
+			escapedLine, font, fontSize, color, outlineWidth, outlineColor, yExpr)
+		filters = append(filters, filter)
+	}
+
+	return strings.Join(filters, ",")
 }
 
 // escapeDrawtext 跳脫 drawtext 濾鏡中的特殊字元
 func escapeDrawtext(text string) string {
-	// 跳脫單引號、反斜線、冒號
+	// 跳脫單引號、反斜線、冒號、百分號
 	text = strings.ReplaceAll(text, "\\", "\\\\")
 	text = strings.ReplaceAll(text, "'", "'\\''")
 	text = strings.ReplaceAll(text, ":", "\\:")
+	text = strings.ReplaceAll(text, "%", "\\%")
 	return text
 }
+

@@ -179,6 +179,12 @@ func (r *JobCreateRequest) Validate() error {
 		if r.CoverStyle.BackgroundType == "image" && r.CoverStyle.BackgroundImage == "" {
 			return fmt.Errorf("cover_style.background_image 在背景類型為 image 時必填")
 		}
+		if r.CoverStyle.TitleStyle.Font == "" {
+			r.CoverStyle.TitleStyle.Font = r.SubtitleStyle.Font
+		}
+		if r.CoverStyle.TitleStyle.Color == "" {
+			r.CoverStyle.TitleStyle.Color = "FFFFFF"
+		}
 	}
 	// ProgressBar 驗證
 	if r.ProgressBar.Enabled {
