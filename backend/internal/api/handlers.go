@@ -791,10 +791,16 @@ func (h *Handlers) ConvertAspectRatio(w http.ResponseWriter, r *http.Request) {
 	targetW, targetH := media.ParseResolution(req.AspectRatio, req.TargetW, req.TargetH)
 	log.Info().Int("targetW", targetW).Int("targetH", targetH).Str("fill_mode", req.FillMode).Msg("執行影片比例轉換管道串流...")
 
-	// 方案一 (FFmpeg 直推管道串流)：
-	// 帶入 Transfer-Encoding: chunked 標頭，通知 Client (n8n / Node.js) 切換為標準分塊串流解碼模式
-	// 避免 Node.js 因缺乏長度與分塊標註而在中途觸發 socketCloseListener 切斷 Socket
-	w.Header().Set("Transfer-Encoding", "chunked")
+	// ★ 根本原因修復：Go HTTP Server 全域 WriteTimeout 為 30 秒，
+	// 超過 30 秒的串流回應會被 Server 強制切斷 TCP 連線，
+	// 導致 FFmpeg 印出「Broken pipe」、n8n 端觸發「aborted (socketCloseListener)」。
+	// 使用 http.ResponseController 僅針對此長時間轉碼請求延長 WriteDeadline 至 10 分鐘，
+	// 其餘 API 仍保持 30 秒安全超時。
+	rc := http.NewResponseController(w)
+	if err := rc.SetWriteDeadline(time.Now().Add(10 * time.Minute)); err != nil {
+		log.Warn().Err(err).Msg("無法延長 WriteDeadline，長影片串流可能會被截斷")
+	}
+
 	w.Header().Set("Content-Type", "video/mp4")
 	w.Header().Set("Content-Disposition", "inline; filename=\"converted_video.mp4\"")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
