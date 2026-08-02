@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "GoShortsGenerator API",
-    "version": "1.10.1",
+    "version": "1.10.2",
     "description": "短影片自動生成任務 API"
   },
   "tags": [
