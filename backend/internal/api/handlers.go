@@ -604,6 +604,8 @@ func (h *Handlers) AddProgressBarOnly(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Info().Interface("request", req).Msg("收到新增進度條請求")
+
 	if req.VideoURL == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "請提供 video_url"})
 		return
@@ -701,4 +703,101 @@ func (h *Handlers) AddProgressBarOnly(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, outputVideo)
 	log.Info().Msg("影片串流回傳完成！")
 }
+
+// ConvertAspectRatio 接收影片檔案或路徑，依指定比例與背景模式轉換影片比例
+func (h *Handlers) ConvertAspectRatio(w http.ResponseWriter, r *http.Request) {
+	var req media.ConvertAspectRatioRequest
+	contentType := r.Header.Get("Content-Type")
+
+	tmpDir, err := os.MkdirTemp("", "convert_ar_*")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "建立臨時目錄失敗: " + err.Error()})
+		return
+	}
+	defer os.RemoveAll(tmpDir)
+
+	localInput := filepath.Join(tmpDir, "input.mp4")
+	localOutput := filepath.Join(tmpDir, "output.mp4")
+
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		_ = r.ParseMultipartForm(500 << 20) // 最大 500MB
+		req.AspectRatio = r.FormValue("aspect_ratio")
+		req.FillMode = r.FormValue("fill_mode")
+		req.BackgroundColor = r.FormValue("background_color")
+		if wStr := r.FormValue("width"); wStr != "" {
+			req.TargetW, _ = strconv.Atoi(wStr)
+		}
+		if hStr := r.FormValue("height"); hStr != "" {
+			req.TargetH, _ = strconv.Atoi(hStr)
+		}
+		req.VideoPath = r.FormValue("video_path")
+		req.VideoURL = r.FormValue("video_url")
+
+		file, header, err := r.FormFile("file")
+		if err == nil && file != nil {
+			defer file.Close()
+			if req.VideoPath == "" {
+				req.VideoPath = header.Filename
+			}
+			dst, err := os.Create(localInput)
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "建立上傳檔案失敗: " + err.Error()})
+				return
+			}
+			if _, err := io.Copy(dst, file); err != nil {
+				dst.Close()
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "寫入上傳檔案失敗: " + err.Error()})
+				return
+			}
+			dst.Close()
+		}
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "請提供有效JSON或Form資料"})
+			return
+		}
+	}
+
+	log.Info().Interface("request", req).Msg("收到影片比例轉換請求")
+
+	// 如果沒有經由 file 上傳，檢查是否有 video_url 或 video_path
+	if _, err := os.Stat(localInput); os.IsNotExist(err) {
+		source := req.VideoURL
+		if source == "" {
+			source = req.VideoPath
+		}
+
+		if source != "" {
+			if strings.HasPrefix(source, "http://") || strings.HasPrefix(source, "https://") {
+				log.Info().Str("url", source).Msg("從 URL 下載來源影片...")
+				if err := utils.DownloadFile(source, localInput); err != nil {
+					writeJSON(w, http.StatusBadRequest, map[string]string{"error": "下載來源影片失敗: " + err.Error()})
+					return
+				}
+			} else {
+				log.Info().Str("path", source).Msg("從本機路徑讀取來源影片...")
+				if err := utils.CopyFile(source, localInput); err != nil {
+					writeJSON(w, http.StatusBadRequest, map[string]string{"error": "讀取來源影片失敗: " + err.Error()})
+					return
+				}
+			}
+		} else {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "請上傳影片檔案 (file) 或提供 video_url / video_path"})
+			return
+		}
+	}
+
+	targetW, targetH := media.ParseResolution(req.AspectRatio, req.TargetW, req.TargetH)
+	log.Info().Int("targetW", targetW).Int("targetH", targetH).Str("fill_mode", req.FillMode).Msg("執行影片比例轉換...")
+
+	if err := media.ConvertVideoAspectRatio(localInput, localOutput, req.FillMode, req.BackgroundColor, targetW, targetH, h.Config.FFmpegThreads); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "video/mp4")
+	w.Header().Set("Content-Disposition", "inline; filename=\"converted_video.mp4\"")
+	http.ServeFile(w, r, localOutput)
+}
+
 

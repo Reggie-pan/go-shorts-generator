@@ -50,5 +50,18 @@ export default {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     return data
+  },
+  async convertVideoAspectRatio(formDataOrPayload) {
+    let headers = {}
+    let payload = formDataOrPayload
+    if (formDataOrPayload instanceof FormData) {
+      headers['Content-Type'] = 'multipart/form-data'
+    }
+    const response = await client.post('/video/convert-aspect-ratio', payload, {
+      headers,
+      responseType: 'blob'
+    })
+    return URL.createObjectURL(response.data)
   }
 }
+

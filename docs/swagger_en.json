@@ -2,8 +2,8 @@
   "openapi": "3.0.1",
   "info": {
     "title": "GoShortsGenerator API",
-    "version": "1.7.1",
-    "description": "Short Video Auto-Generation Task API"
+    "version": "1.10.0",
+    "description": "Short Video Automatic Generation Task API"
   },
   "tags": [
     { "name": "Jobs", "description": "Job management APIs" },
@@ -290,6 +290,42 @@
         }
       }
     },
+    "/api/v1/video/convert-aspect-ratio": {
+      "post": {
+        "tags": ["Utilities"],
+        "summary": "Convert video resolution and aspect ratio",
+        "description": "Send video (upload file or provide video_url / video_path) and set target ratio (e.g. 9:16, 16:9, 1:1) and fill mode (color: fill color, blur: blur background, crop: center crop), directly returns converted video stream (MP4)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "Video file to convert" },
+                  "aspect_ratio": { "type": "string", "example": "9:16", "description": "Target aspect ratio (9:16, 16:9, 1:1, 4:5)" },
+                  "fill_mode": { "type": "string", "example": "color", "description": "Fill mode (color, blur, crop)" },
+                  "background_color": { "type": "string", "example": "#000000", "description": "Hex background color (default #000000)" },
+                  "width": { "type": "integer", "example": 1080, "description": "Custom width" },
+                  "height": { "type": "integer", "example": 1920, "description": "Custom height" },
+                  "video_url": { "type": "string", "description": "Source video URL (if file is omitted)" },
+                  "video_path": { "type": "string", "description": "Source video path (if file is omitted)" }
+                }
+              }
+            },
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ConvertAspectRatioRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Converted video file (MP4)",
+            "content": { "video/mp4": {} }
+          }
+        }
+      }
+    },
     "/api/v1/swagger.json": {
       "get": {
         "tags": ["Utilities"],
@@ -454,6 +490,18 @@
           }
         },
         "required": ["script", "materials", "tts", "video"]
+      },
+      "ConvertAspectRatioRequest": {
+        "type": "object",
+        "properties": {
+          "video_url": { "type": "string", "example": "https://example.com/video.mp4", "description": "Source video URL" },
+          "video_path": { "type": "string", "example": "uploads/video.mp4", "description": "Source video path" },
+          "aspect_ratio": { "type": "string", "example": "9:16", "description": "Target aspect ratio (9:16, 16:9, 1:1, 4:5)" },
+          "fill_mode": { "type": "string", "example": "color", "enum": ["color", "blur", "crop"], "description": "Fill mode" },
+          "background_color": { "type": "string", "example": "#000000", "description": "Hex background color (default #000000)" },
+          "width": { "type": "integer", "example": 1080, "description": "Custom width" },
+          "height": { "type": "integer", "example": 1920, "description": "Custom height" }
+        }
       }
     }
   }

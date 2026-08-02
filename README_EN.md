@@ -45,6 +45,8 @@
   - Optional title voice, with cover duration automatically adjusted based on voice length.
 - **⏱️ Auto Duration Distribution**:
   - When enabled, the system automatically distributes material durations evenly based on total voice duration.
+- **📐 Video Aspect Ratio Converter**:
+  - Toolkit supports converting videos to 9:16, 16:9, 1:1, etc., with options for solid color fill, blurred video background, or center crop.
 - **🐳 Containerized Deployment**: Built on Docker architecture for simple deployment and consistent environments.
 
 ## Tech Stack 🛠️

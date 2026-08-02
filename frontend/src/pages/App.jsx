@@ -54,6 +54,56 @@ export default function App() {
   // About Modal
   const [showAboutModal, setShowAboutModal] = useState(false)
 
+  // Video Convert Modal
+  const [showConvertModal, setShowConvertModal] = useState(false)
+  const [convertFile, setConvertFile] = useState(null)
+  const [convertUrlOrPath, setConvertUrlOrPath] = useState('')
+  const [convertAspectRatio, setConvertAspectRatio] = useState('9:16')
+  const [convertFillMode, setConvertFillMode] = useState('color')
+  const [convertBgColor, setConvertBgColor] = useState('000000')
+  const [convertLoading, setConvertLoading] = useState(false)
+  const [convertResultUrl, setConvertResultUrl] = useState(null)
+
+  const handleConvertVideo = async () => {
+    if (!convertFile && !convertUrlOrPath) {
+      addToast('error', t('fillRequired'))
+      return
+    }
+    try {
+      setConvertLoading(true)
+      let payload
+      if (convertFile) {
+        payload = new FormData()
+        payload.append('file', convertFile)
+        payload.append('aspect_ratio', convertAspectRatio)
+        payload.append('fill_mode', convertFillMode)
+        payload.append('background_color', '#' + convertBgColor)
+      } else {
+        payload = {
+          aspect_ratio: convertAspectRatio,
+          fill_mode: convertFillMode,
+          background_color: '#' + convertBgColor
+        }
+        if (convertUrlOrPath.startsWith('http://') || convertUrlOrPath.startsWith('https://')) {
+          payload.video_url = convertUrlOrPath
+        } else {
+          payload.video_path = convertUrlOrPath
+        }
+      }
+
+      const url = await api.convertVideoAspectRatio(payload)
+      if (convertResultUrl) {
+        URL.revokeObjectURL(convertResultUrl)
+      }
+      setConvertResultUrl(url)
+    } catch (err) {
+      console.error(err)
+      addToast('error', (err.response?.data?.error || err.message))
+    } finally {
+      setConvertLoading(false)
+    }
+  }
+
   // Apply theme
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -347,6 +397,150 @@ export default function App() {
         </div>
       )}
 
+      {/* Video Convert Modal */}
+      {showConvertModal && (
+        <div className="modal-overlay" onClick={() => setShowConvertModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3><i className="fas fa-crop-alt" style={{ marginRight: '8px' }}></i> {t('videoConvertSettings')}</h3>
+              <button className="close-btn" onClick={() => setShowConvertModal(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                  {t('selectFile')} / {t('pathOrUrl')}
+                </label>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <label className="btn btn-secondary btn-file-select" style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    <i className="fas fa-upload"></i> {t('selectFile')}
+                    <input 
+                      type="file" 
+                      accept="video/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setConvertFile(e.target.files[0])
+                        }
+                      }}
+                    />
+                  </label>
+                  <input 
+                    type="text"
+                    value={convertFile ? convertFile.name : convertUrlOrPath}
+                    onChange={(e) => {
+                      setConvertFile(null)
+                      setConvertUrlOrPath(e.target.value)
+                    }}
+                    placeholder={t('pathInputPlaceholder')}
+                    style={{ flex: 1 }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2" style={{ gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                    {t('targetAspectRatio')}
+                  </label>
+                  <SearchableSelect 
+                    options={[
+                      { label: '9:16 (1080x1920)', value: '9:16' },
+                      { label: '16:9 (1920x1080)', value: '16:9' },
+                      { label: '1:1 (1080x1080)', value: '1:1' },
+                      { label: '4:5 (1080x1350)', value: '4:5' }
+                    ]}
+                    value={convertAspectRatio}
+                    onChange={(val) => setConvertAspectRatio(val)}
+                    searchable={false}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                    {t('fillMode')}
+                  </label>
+                  <SearchableSelect 
+                    options={[
+                      { label: t('fillModeColor'), value: 'color' },
+                      { label: t('fillModeBlur'), value: 'blur' },
+                      { label: t('fillModeCrop'), value: 'crop' }
+                    ]}
+                    value={convertFillMode}
+                    onChange={(val) => setConvertFillMode(val)}
+                    searchable={false}
+                  />
+                </div>
+              </div>
+
+              {convertFillMode === 'color' && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                    {t('backgroundColor')}
+                  </label>
+                  <div className="color-picker-group">
+                    <div className="color-preview-wrapper">
+                      <input 
+                        type="color" 
+                        value={`#${convertBgColor}`} 
+                        onChange={(e) => setConvertBgColor(e.target.value.replace('#', '').toUpperCase())} 
+                        className="color-input"
+                      />
+                    </div>
+                    <div className="hex-input-wrapper">
+                      <div className="hex-input-group">
+                        <span>#</span>
+                        <input 
+                          type="text" 
+                          value={convertBgColor} 
+                          onChange={(e) => setConvertBgColor(e.target.value.replace('#', '').toUpperCase())} 
+                          placeholder="000000"
+                          maxLength="6"
+                          className="hex-input"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button 
+                className="btn btn-primary" 
+                style={{ width: '100%', marginTop: '8px', padding: '10px' }}
+                onClick={handleConvertVideo}
+                disabled={convertLoading}
+              >
+                {convertLoading ? (
+                  <span><i className="fas fa-spinner fa-spin"></i> {t('convertingVideo')}</span>
+                ) : (
+                  <span><i className="fas fa-magic"></i> {t('convertVideoBtn')}</span>
+                )}
+              </button>
+
+              {convertResultUrl && (
+                <div style={{ marginTop: '20px', textAlign: 'center', paddingTop: '16px', borderTop: '1px solid var(--border-primary)' }}>
+                  <h4 style={{ marginBottom: '12px' }}>{t('download')}</h4>
+                  <video 
+                    src={convertResultUrl} 
+                    controls 
+                    style={{ maxWidth: '100%', maxHeight: '320px', borderRadius: '8px', marginBottom: '12px' }} 
+                  />
+                  <div>
+                    <a 
+                      href={convertResultUrl} 
+                      download="converted_video.mp4" 
+                      className="btn btn-secondary" 
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <i className="fas fa-download"></i> {t('download')}
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="app-header">
         <h1 className="header-title">
           <i className="fas fa-video"></i>
@@ -378,6 +572,12 @@ export default function App() {
           </div>
           <div className="header-divider"></div>
           <div className="header-group">
+            <button 
+              onClick={() => setShowConvertModal(true)} 
+              className="btn-text" 
+            >
+              <i className="fas fa-crop-alt"></i> <span>{t('videoConvertSettings')}</span>
+            </button>
             <a href={`/swagger.html?lang=${lang}`} target="_blank" rel="noreferrer" className="btn-text">
               <i className="fas fa-file-code"></i> <span>{t('apiDocs')}</span>
             </a>
