@@ -718,6 +718,7 @@ func (h *Handlers) ConvertAspectRatio(w http.ResponseWriter, r *http.Request) {
 
 	localInput := filepath.Join(tmpDir, "input.mp4")
 	localOutput := filepath.Join(tmpDir, "output.mp4")
+	_ = localOutput
 
 	if strings.HasPrefix(contentType, "multipart/form-data") {
 		_ = r.ParseMultipartForm(500 << 20) // 最大 500MB
@@ -788,11 +789,11 @@ func (h *Handlers) ConvertAspectRatio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	targetW, targetH := media.ParseResolution(req.AspectRatio, req.TargetW, req.TargetH)
-	log.Info().Int("targetW", targetW).Int("targetH", targetH).Str("fill_mode", req.FillMode).Msg("執行影片比例轉換...")
+	log.Info().Int("targetW", targetW).Int("targetH", targetH).Str("fill_mode", req.FillMode).Msg("執行影片比例轉換管道串流...")
 
-	// 做法 1 (同步串流早發標頭 TTFB 0ms)：
-	// 在執行耗時 FFmpeg 轉碼前先發送 200 OK Response Header 給 Client (n8n)
-	// 讓 Client Socket 立即進入「正在接收串流」狀態，避免轉碼期間 (30s+) 因 Socket 閒置而被切斷 (socket hang up)
+	// 方案一 (FFmpeg 直推管道串流)：
+	// 先寫入 200 OK 標頭，隨後由 FFmpeg 將 fMP4 二進位串流即時寫入 w (http.ResponseWriter)
+	// FFmpeg 邊轉碼邊發送位元組，連線持續傳輸，100% 避免 n8n / Node.js 因 30s 無資料而引發 aborted
 	w.Header().Set("Content-Type", "video/mp4")
 	w.Header().Set("Content-Disposition", "inline; filename=\"converted_video.mp4\"")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -800,23 +801,12 @@ func (h *Handlers) ConvertAspectRatio(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 
-	if err := media.ConvertVideoAspectRatio(localInput, localOutput, req.FillMode, req.BackgroundColor, targetW, targetH, h.Config.FFmpegThreads); err != nil {
-		log.Error().Err(err).Msg("影片比例轉換失敗")
+	if err := media.ConvertVideoAspectRatioStream(localInput, w, req.FillMode, req.BackgroundColor, targetW, targetH, h.Config.FFmpegThreads); err != nil {
+		log.Error().Err(err).Msg("影片比例轉換串流失敗")
 		return
 	}
 
-	outF, err := os.Open(localOutput)
-	if err != nil {
-		log.Error().Err(err).Msg("無法開啟轉換後影片檔案")
-		return
-	}
-	defer outF.Close()
-
-	if _, err := io.Copy(w, outF); err != nil {
-		log.Error().Err(err).Msg("串流回傳影片檔案失敗")
-		return
-	}
-	log.Info().Msg("影片串流回傳完成！")
+	log.Info().Msg("影片比例轉換管道串流成功完成！")
 }
 
 

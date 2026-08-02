@@ -1,7 +1,10 @@
 package media
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -147,7 +150,7 @@ func ConvertVideoAspectRatio(inputVideo, outputVideo, fillMode, bgColor string, 
 
 	args = append(args,
 		"-c:v", "libx264",
-		"-preset", "ultrafast",
+		"-preset", "veryfast",
 		"-crf", "23",
 		"-c:a", "aac",
 		"-b:a", "128k",
@@ -167,5 +170,61 @@ func ConvertVideoAspectRatio(inputVideo, outputVideo, fillMode, bgColor string, 
 	}
 
 	log.Info().Msg("FFmpeg 影片比例轉換完成")
+	return nil
+}
+
+// ConvertVideoAspectRatioStream 執行影片比例轉換，將 Fragmented MP4 二進位串流即時推送到 outWriter (如 http.ResponseWriter)
+func ConvertVideoAspectRatioStream(inputVideo string, outWriter io.Writer, fillMode, backgroundColor string, targetW, targetH int, ffmpegThreads string) error {
+	filterStr, isComplex := BuildConvertAspectRatioFilter(fillMode, backgroundColor, targetW, targetH)
+
+	args := []string{
+		"-y",
+		"-i", inputVideo,
+	}
+
+	if isComplex {
+		args = append(args,
+			"-filter_complex", filterStr,
+			"-map", "[v]",
+			"-map", "0:a?",
+		)
+	} else {
+		args = append(args,
+			"-vf", filterStr,
+			"-map", "0:v",
+			"-map", "0:a?",
+		)
+	}
+
+	args = append(args,
+		"-c:v", "libx264",
+		"-preset", "veryfast",
+		"-crf", "23",
+		"-c:a", "aac",
+		"-b:a", "128k",
+		"-f", "mp4",
+		"-movflags", "empty_moov+frag_keyframe+default_base_moof",
+	)
+
+	if ffmpegThreads != "" {
+		args = append(args, "-threads", ffmpegThreads)
+	}
+
+	// 輸出至 stdout (pipe:1)
+	args = append(args, "pipe:1")
+
+	log.Info().Str("input", inputVideo).Str("filter", filterStr).Msg("開始執行 FFmpeg 影片比例直推管道串流...")
+
+	cmd := exec.Command("ffmpeg", args...)
+	cmd.Stdout = outWriter
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		log.Error().Err(err).Str("stderr", stderr.String()).Msg("FFmpeg 串流執行失敗")
+		return fmt.Errorf("FFmpeg 串流執行失敗: %w, stderr: %s", err, stderr.String())
+	}
+
+	log.Info().Msg("FFmpeg 影片比例直推管道串流完成")
 	return nil
 }
