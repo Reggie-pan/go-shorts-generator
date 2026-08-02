@@ -3,12 +3,12 @@ package media
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/Reggie-pan/go-shorts-generator/internal/service/job"
 	"github.com/Reggie-pan/go-shorts-generator/internal/utils"
@@ -514,12 +514,12 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 		start := formatASSTime(seg.Start)
 		end := formatASSTime(seg.End)
 
-		// 自動換行邏輯：計算畫布最大容納字數，確保大字體時不超出邊界
+		// 自動換行邏輯：計算畫布最大容納加權字數，確保大字體時不超出邊界
 		text := seg.Text
-		maxLineWidth := style.MaxLineWidth
-		fitCount := int(float64(resX) * 0.85 / float64(style.Size))
-		if fitCount < 2 {
-			fitCount = 2
+		maxLineWidth := float64(style.MaxLineWidth)
+		fitCount := float64(resX) * 0.90 / float64(style.Size)
+		if fitCount < 2.0 {
+			fitCount = 2.0
 		}
 
 		if maxLineWidth <= 0 || maxLineWidth > fitCount {
@@ -542,85 +542,137 @@ func BuildASS(base string, style job.SubtitleStyle, segments []SubtitleLine, res
 	return path, style, nil
 }
 
-// wrapText 將文本按照最大寬度自動換行
-func wrapText(text string, maxWidth int) string {
+// runeWidth 計算單個字元的視覺加權寬度 (全形/中文=1.0, 半形/英數=0.4, 半形空格=0.25)
+func runeWidth(r rune) float64 {
+	if r == ' ' {
+		return 0.25
+	}
+	if r >= 0x21 && r <= 0x7E {
+		return 0.4
+	}
+	if r < 0x20 {
+		return 0.25
+	}
+	return 1.0
+}
+
+// getWeightedWidth 計算字串總加權寬度
+func getWeightedWidth(text string) float64 {
+	var total float64
+	for _, r := range []rune(text) {
+		total += runeWidth(r)
+	}
+	return total
+}
+
+// wrapText 將文本按照最大加權寬度自動換行 (支援加權寬度與雙行平衡)
+func wrapText(text string, maxLineWidth float64) string {
+	text = strings.TrimSpace(text)
 	runes := []rune(text)
-	if utf8.RuneCountInString(text) <= maxWidth {
+	totalWidth := getWeightedWidth(text)
+
+	if totalWidth <= maxLineWidth {
 		return text
 	}
 
-	var lines []string
-	var currentLine []rune
+	// 情況一：文字適合作雙行長度平衡 (Balanced Line Wrapping)
+	// 當總加權長度在 maxLineWidth ~ 2 * maxLineWidth 之間時，嘗試在中間尋找最均衡的切分點
+	if totalWidth <= maxLineWidth*2.0 {
+		targetWidth := totalWidth / 2.0
+		bestIdx := -1
+		bestDiff := 999.0
 
-	for i := 0; i < len(runes); {
-		// 嘗試取出 maxWidth 個字符
-		remaining := len(runes) - i
-		chunkSize := maxWidth
-		if remaining < chunkSize {
-			chunkSize = remaining
+		var currentWidth float64
+		for idx := 1; idx < len(runes); idx++ {
+			currentWidth += runeWidth(runes[idx-1])
+			prev := runes[idx-1]
+			curr := runes[idx]
+
+			if !isSafeSplitPoint(prev, curr) {
+				continue
+			}
+
+			leftWidth := currentWidth
+			rightWidth := getWeightedWidth(string(runes[idx:]))
+
+			// 兩行加權長度皆不能超過上限 maxLineWidth
+			if leftWidth <= maxLineWidth && rightWidth <= maxLineWidth {
+				diff := math.Abs(leftWidth-rightWidth) + math.Abs(leftWidth-targetWidth)
+				// 優先考慮目標接近平分 (targetWidth) 的切分點
+				if diff < bestDiff {
+					bestDiff = diff
+					bestIdx = idx
+				}
+			}
 		}
 
-		chunk := runes[i : i+chunkSize]
+		if bestIdx != -1 {
+			line1 := strings.TrimSpace(string(runes[:bestIdx]))
+			line2 := strings.TrimSpace(string(runes[bestIdx:]))
+			return line1 + "\n" + line2
+		}
+	}
 
-		// 如果這是最後一塊，直接加入
-		if i+chunkSize >= len(runes) {
-			currentLine = append(currentLine, chunk...)
-			lines = append(lines, string(currentLine))
+	// 情況二：逐行填滿切分 (長文字或雙行平衡尋找失敗時)
+	var lines []string
+	for i := 0; i < len(runes); {
+		remaining := string(runes[i:])
+		if getWeightedWidth(remaining) <= maxLineWidth {
+			lines = append(lines, strings.TrimSpace(remaining))
 			break
 		}
 
-		// 檢查是否可以在更好的位置切分（空格、標點等）
-		// 向後查找最多 8 個字符
-		bestSplit := chunkSize
-		foundPunctuation := false
-		for j := chunkSize; j > chunkSize-8 && j > 0; j-- {
-			char := runes[i+j-1]
-			// 中文標點或空格
-			if char == ' ' || char == '，' || char == '。' || char == '！' || char == '？' || char == '；' || char == '、' {
-				bestSplit = j
-				foundPunctuation = true
+		// 在 maxLineWidth 範圍內尋找最佳 Safe Split 位置
+		bestSplit := 1
+		var accumWidth float64
+		for j := 1; j <= len(runes)-i; j++ {
+			w := runeWidth(runes[i+j-1])
+			if accumWidth+w > maxLineWidth {
 				break
 			}
-		}
+			accumWidth += w
 
-		// 如果沒找到標點/空格，嘗試找一個"安全"的切分點 (非英數/特殊符號)
-		if !foundPunctuation {
-			for j := chunkSize; j > chunkSize-8 && j > 0; j-- {
-				idx := i + j
-				if idx >= len(runes) {
-					continue
-				}
-
-				curr := runes[idx]
+			idx := i + j
+			if idx < len(runes) {
 				prev := runes[idx-1]
-
-				isUnsafe := false
-				// 1. 英文/數字中間
-				isPrevAlpha := (prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') || (prev >= '0' && prev <= '9')
-				isCurrAlpha := (curr >= 'a' && curr <= 'z') || (curr >= 'A' && curr <= 'Z') || (curr >= '0' && curr <= '9')
-				if isPrevAlpha && isCurrAlpha {
-					isUnsafe = true
-				}
-
-				// 2. 特殊符號前
-				if curr == '%' || curr == '％' || curr == '℃' || curr == '°' {
-					isUnsafe = true
-				}
-
-				if !isUnsafe {
+				curr := runes[idx]
+				if isSafeSplitPoint(prev, curr) {
 					bestSplit = j
-					break
 				}
+			} else {
+				bestSplit = j
 			}
 		}
 
-		currentLine = append(currentLine, runes[i:i+bestSplit]...)
-		lines = append(lines, string(currentLine))
-		currentLine = []rune{}
+		lineContent := strings.TrimSpace(string(runes[i : i+bestSplit]))
+		if lineContent != "" {
+			lines = append(lines, lineContent)
+		}
+
 		i += bestSplit
+		for i < len(runes) && runes[i] == ' ' {
+			i++
+		}
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// isSafeSplitPoint 判斷在 prev 與 curr 之間切分是否安全（不破壞英文單字/數字完整性且符合避頭點規則）
+func isSafeSplitPoint(prev, curr rune) bool {
+	// 1. 英文/數字中間切斷是不安全的 (例如 Cat 切成 C-at)
+	isPrevAlphaNum := (prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') || (prev >= '0' && prev <= '9')
+	isCurrAlphaNum := (curr >= 'a' && curr <= 'z') || (curr >= 'A' && curr <= 'Z') || (curr >= '0' && curr <= '9')
+	if isPrevAlphaNum && isCurrAlphaNum {
+		return false
+	}
+
+	// 2. 避頭點 (不應該出現在行首的符號)
+	if strings.ContainsRune("，。？！、；：」』）!,.:;?)]}%％℃°", curr) {
+		return false
+	}
+
+	return true
 }
 
 func formatASSTime(ms int) string {

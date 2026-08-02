@@ -302,10 +302,10 @@ func buildTitleFilter(title string, style job.SubtitleStyle, w, h int) string {
 	}
 
 	// 計算自動換行寬度
-	maxLineWidth := style.MaxLineWidth
-	fitCount := int(float64(w) * 0.85 / float64(fontSize))
-	if fitCount < 2 {
-		fitCount = 2
+	maxLineWidth := float64(style.MaxLineWidth)
+	fitCount := float64(w) * 0.90 / float64(fontSize)
+	if fitCount < 2.0 {
+		fitCount = 2.0
 	}
 
 	if maxLineWidth <= 0 || maxLineWidth > fitCount {
