@@ -790,14 +790,33 @@ func (h *Handlers) ConvertAspectRatio(w http.ResponseWriter, r *http.Request) {
 	targetW, targetH := media.ParseResolution(req.AspectRatio, req.TargetW, req.TargetH)
 	log.Info().Int("targetW", targetW).Int("targetH", targetH).Str("fill_mode", req.FillMode).Msg("執行影片比例轉換...")
 
+	// 做法 1 (同步串流早發標頭 TTFB 0ms)：
+	// 在執行耗時 FFmpeg 轉碼前先發送 200 OK Response Header 給 Client (n8n)
+	// 讓 Client Socket 立即進入「正在接收串流」狀態，避免轉碼期間 (30s+) 因 Socket 閒置而被切斷 (socket hang up)
+	w.Header().Set("Content-Type", "video/mp4")
+	w.Header().Set("Content-Disposition", "inline; filename=\"converted_video.mp4\"")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+
 	if err := media.ConvertVideoAspectRatio(localInput, localOutput, req.FillMode, req.BackgroundColor, targetW, targetH, h.Config.FFmpegThreads); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		log.Error().Err(err).Msg("影片比例轉換失敗")
 		return
 	}
 
-	w.Header().Set("Content-Type", "video/mp4")
-	w.Header().Set("Content-Disposition", "inline; filename=\"converted_video.mp4\"")
-	http.ServeFile(w, r, localOutput)
+	outF, err := os.Open(localOutput)
+	if err != nil {
+		log.Error().Err(err).Msg("無法開啟轉換後影片檔案")
+		return
+	}
+	defer outF.Close()
+
+	if _, err := io.Copy(w, outF); err != nil {
+		log.Error().Err(err).Msg("串流回傳影片檔案失敗")
+		return
+	}
+	log.Info().Msg("影片串流回傳完成！")
 }
 
 

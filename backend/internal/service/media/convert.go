@@ -147,7 +147,7 @@ func ConvertVideoAspectRatio(inputVideo, outputVideo, fillMode, bgColor string, 
 
 	args = append(args,
 		"-c:v", "libx264",
-		"-preset", "veryfast",
+		"-preset", "ultrafast",
 		"-crf", "23",
 		"-c:a", "aac",
 		"-b:a", "128k",

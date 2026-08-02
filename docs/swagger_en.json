@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "GoShortsGenerator API",
-    "version": "1.10.0",
+    "version": "1.10.1",
     "description": "Short Video Automatic Generation Task API"
   },
   "tags": [
@@ -42,8 +42,18 @@
         "tags": ["Jobs"],
         "summary": "List jobs",
         "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Items per page" }
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 },
+            "description": "Page number"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 },
+            "description": "Items per page"
+          }
         ],
         "responses": { "200": { "description": "List", "content": { "application/json": {} } } }
       },
@@ -303,9 +313,17 @@
                 "type": "object",
                 "properties": {
                   "file": { "type": "string", "format": "binary", "description": "Video file to convert" },
-                  "aspect_ratio": { "type": "string", "example": "9:16", "description": "Target aspect ratio (9:16, 16:9, 1:1, 4:5)" },
+                  "aspect_ratio": {
+                    "type": "string",
+                    "example": "9:16",
+                    "description": "Target aspect ratio (9:16, 16:9, 1:1, 4:5)"
+                  },
                   "fill_mode": { "type": "string", "example": "color", "description": "Fill mode (color, blur, crop)" },
-                  "background_color": { "type": "string", "example": "#000000", "description": "Hex background color (default #000000)" },
+                  "background_color": {
+                    "type": "string",
+                    "example": "#000000",
+                    "description": "Hex background color (default #000000)"
+                  },
                   "width": { "type": "integer", "example": 1080, "description": "Custom width" },
                   "height": { "type": "integer", "example": 1920, "description": "Custom height" },
                   "video_url": { "type": "string", "description": "Source video URL (if file is omitted)" },
@@ -380,7 +398,10 @@
             "description": "Gradient/solid colors (Hex)",
             "example": ["FF6B9D", "FFE66D", "4ECDC4"]
           },
-          "background_image": { "type": "string", "description": "Background image path or URL (when background_type=image)" },
+          "background_image": {
+            "type": "string",
+            "description": "Background image path or URL (when background_type=image)"
+          },
           "title_style": { "$ref": "#/components/schemas/SubtitleStyle" }
         }
       },
@@ -389,7 +410,10 @@
         "description": "Animated image progress bar settings",
         "properties": {
           "enabled": { "type": "boolean", "description": "Enable animated image progress bar", "default": false },
-          "image_path": { "type": "string", "description": "Image path (local path after upload) or URL. Supports PNG, GIF, WebP" },
+          "image_path": {
+            "type": "string",
+            "description": "Image path (local path after upload) or URL. Supports PNG, GIF, WebP"
+          },
           "direction": {
             "type": "string",
             "enum": ["top", "bottom", "left", "right"],
@@ -402,7 +426,11 @@
         "type": "object",
         "required": ["video_url", "progress_bar"],
         "properties": {
-          "video_url": { "type": "string", "example": "https://example.com/input.mp4", "description": "Source video URL or local absolute path" },
+          "video_url": {
+            "type": "string",
+            "example": "https://example.com/input.mp4",
+            "description": "Source video URL or local absolute path"
+          },
           "progress_bar": { "$ref": "#/components/schemas/ProgressBar" }
         }
       },
@@ -494,11 +522,28 @@
       "ConvertAspectRatioRequest": {
         "type": "object",
         "properties": {
-          "video_url": { "type": "string", "example": "https://example.com/video.mp4", "description": "Source video URL" },
+          "video_url": {
+            "type": "string",
+            "example": "https://example.com/video.mp4",
+            "description": "Source video URL"
+          },
           "video_path": { "type": "string", "example": "uploads/video.mp4", "description": "Source video path" },
-          "aspect_ratio": { "type": "string", "example": "9:16", "description": "Target aspect ratio (9:16, 16:9, 1:1, 4:5)" },
-          "fill_mode": { "type": "string", "example": "color", "enum": ["color", "blur", "crop"], "description": "Fill mode" },
-          "background_color": { "type": "string", "example": "#000000", "description": "Hex background color (default #000000)" },
+          "aspect_ratio": {
+            "type": "string",
+            "example": "9:16",
+            "description": "Target aspect ratio (9:16, 16:9, 1:1, 4:5)"
+          },
+          "fill_mode": {
+            "type": "string",
+            "example": "color",
+            "enum": ["color", "blur", "crop"],
+            "description": "Fill mode"
+          },
+          "background_color": {
+            "type": "string",
+            "example": "#000000",
+            "description": "Hex background color (default #000000)"
+          },
           "width": { "type": "integer", "example": 1080, "description": "Custom width" },
           "height": { "type": "integer", "example": 1920, "description": "Custom height" }
         }

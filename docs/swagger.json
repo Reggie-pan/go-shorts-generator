@@ -2,7 +2,7 @@
   "openapi": "3.0.1",
   "info": {
     "title": "GoShortsGenerator API",
-    "version": "1.10.0",
+    "version": "1.10.1",
     "description": "短影片自動生成任務 API"
   },
   "tags": [
@@ -303,9 +303,21 @@
                 "type": "object",
                 "properties": {
                   "file": { "type": "string", "format": "binary", "description": "要轉換的影片檔案" },
-                  "aspect_ratio": { "type": "string", "example": "9:16", "description": "目標比例 (9:16, 16:9, 1:1, 4:5)" },
-                  "fill_mode": { "type": "string", "example": "color", "description": "填補模式 (color: 顏色, blur: 模糊背景, crop: 裁切)" },
-                  "background_color": { "type": "string", "example": "#000000", "description": "Hex 背景顏色 (預設 #000000)" },
+                  "aspect_ratio": {
+                    "type": "string",
+                    "example": "9:16",
+                    "description": "目標比例 (9:16, 16:9, 1:1, 4:5)"
+                  },
+                  "fill_mode": {
+                    "type": "string",
+                    "example": "color",
+                    "description": "填補模式 (color: 顏色, blur: 模糊背景, crop: 裁切)"
+                  },
+                  "background_color": {
+                    "type": "string",
+                    "example": "#000000",
+                    "description": "Hex 背景顏色 (預設 #000000)"
+                  },
                   "width": { "type": "integer", "example": 1080, "description": "自訂寬度" },
                   "height": { "type": "integer", "example": 1920, "description": "自訂高度" },
                   "video_url": { "type": "string", "description": "來源影片 URL (若未傳 file)" },
@@ -402,7 +414,11 @@
         "type": "object",
         "required": ["video_url", "progress_bar"],
         "properties": {
-          "video_url": { "type": "string", "example": "https://example.com/input.mp4", "description": "來源影片 URL 或本地絕對路徑" },
+          "video_url": {
+            "type": "string",
+            "example": "https://example.com/input.mp4",
+            "description": "來源影片 URL 或本地絕對路徑"
+          },
           "progress_bar": { "$ref": "#/components/schemas/ProgressBar" }
         }
       },
@@ -497,7 +513,12 @@
           "video_url": { "type": "string", "example": "https://example.com/video.mp4", "description": "來源影片 URL" },
           "video_path": { "type": "string", "example": "uploads/video.mp4", "description": "來源影片路徑" },
           "aspect_ratio": { "type": "string", "example": "9:16", "description": "目標比例 (9:16, 16:9, 1:1, 4:5)" },
-          "fill_mode": { "type": "string", "example": "color", "enum": ["color", "blur", "crop"], "description": "填補模式" },
+          "fill_mode": {
+            "type": "string",
+            "example": "color",
+            "enum": ["color", "blur", "crop"],
+            "description": "填補模式"
+          },
           "background_color": { "type": "string", "example": "#000000", "description": "Hex 背景顏色 (預設 #000000)" },
           "width": { "type": "integer", "example": 1080, "description": "自訂寬度" },
           "height": { "type": "integer", "example": 1920, "description": "自訂高度" }
