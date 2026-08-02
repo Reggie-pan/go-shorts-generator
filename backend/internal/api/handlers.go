@@ -792,11 +792,13 @@ func (h *Handlers) ConvertAspectRatio(w http.ResponseWriter, r *http.Request) {
 	log.Info().Int("targetW", targetW).Int("targetH", targetH).Str("fill_mode", req.FillMode).Msg("執行影片比例轉換管道串流...")
 
 	// 方案一 (FFmpeg 直推管道串流)：
-	// 先寫入 200 OK 標頭，隨後由 FFmpeg 將 fMP4 二進位串流即時寫入 w (http.ResponseWriter)
-	// FFmpeg 邊轉碼邊發送位元組，連線持續傳輸，100% 避免 n8n / Node.js 因 30s 無資料而引發 aborted
+	// 帶入 Transfer-Encoding: chunked 標頭，通知 Client (n8n / Node.js) 切換為標準分塊串流解碼模式
+	// 避免 Node.js 因缺乏長度與分塊標註而在中途觸發 socketCloseListener 切斷 Socket
+	w.Header().Set("Transfer-Encoding", "chunked")
 	w.Header().Set("Content-Type", "video/mp4")
 	w.Header().Set("Content-Disposition", "inline; filename=\"converted_video.mp4\"")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Accel-Buffering", "no")
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}
