@@ -203,7 +203,8 @@ func ConvertVideoAspectRatioStream(inputVideo string, outWriter io.Writer, fillM
 		"-c:a", "aac",
 		"-b:a", "128k",
 		"-f", "mp4",
-		"-movflags", "empty_moov+frag_keyframe+default_base_moof",
+		"-movflags", "empty_moov+frag_custom+default_base_moof",
+		"-frag_duration", "1000000",
 	)
 
 	if ffmpegThreads != "" {
